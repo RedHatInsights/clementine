@@ -76,7 +76,8 @@ class SlackClient:
                 thread_ts=thread_ts
             )
             return response["ts"]
-        except SlackApiError:
+        except SlackApiError as e:
+            print(f"⚠️ Failed to post loading message: {e.response['error']} - {e}")
             return None
     
     def update_message(self, channel: str, ts: str, text: str) -> bool:
@@ -84,7 +85,8 @@ class SlackClient:
         try:
             self.client.chat_update(channel=channel, ts=ts, text=text)
             return True
-        except SlackApiError:
+        except SlackApiError as e:
+            print(f"⚠️ Failed to update message: {e.response['error']} - {e}")
             return False
 
 
