@@ -2,7 +2,7 @@ from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 import os
 from dotenv import load_dotenv
-from clementine import TangerineClient, ClementineBot
+from clementine import TangerineClient, ClementineBot, SlackClient
 
 load_dotenv()
 
@@ -28,8 +28,11 @@ tangerine_client = TangerineClient(
     timeout=TANGERINE_API_TIMEOUT
 )
 
+slack_client = SlackClient(app.client)
+
 clementine_bot = ClementineBot(
     tangerine_client=tangerine_client,
+    slack_client=slack_client,
     bot_name=BOT_NAME,
     assistant_list=ASSISTANT_LIST,
     default_prompt=DEFAULT_PROMPT

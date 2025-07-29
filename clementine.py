@@ -3,6 +3,89 @@ import uuid
 from typing import Dict, List, Optional, Any
 from slack_sdk.errors import SlackApiError
 from slack_sdk.web.client import WebClient
+from dataclasses import dataclass
+
+
+@dataclass
+class SlackEvent:
+    """Value object representing a Slack mention event."""
+    text: str
+    user_id: str
+    channel: str
+    thread_ts: str
+    
+    @classmethod
+    def from_dict(cls, event: Dict) -> 'SlackEvent':
+        return cls(
+            text=event["text"],
+            user_id=event["user"], 
+            channel=event["channel"],
+            thread_ts=event.get("thread_ts", event["ts"])
+        )
+
+
+@dataclass
+class TangerineResponse:
+    """Value object representing a Tangerine API response."""
+    text: str
+    metadata: List[Dict]
+    
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'TangerineResponse':
+        return cls(
+            text=data.get("text_content", "(No response from assistant)").strip(),
+            metadata=data.get("search_metadata", [])
+        )
+
+
+class MessageFormatter:
+    """Handles formatting of responses."""
+    
+    def format_with_sources(self, response: TangerineResponse) -> str:
+        """Format response text with source citations."""
+        if not response.metadata:
+            return response.text
+            
+        sources = response.metadata[:3]
+        links = self._build_source_links(sources)
+        
+        return response.text + f"\n\n*Sources:*\n{links}" if links else response.text
+    
+    def _build_source_links(self, sources: List[Dict]) -> str:
+        """Build formatted source links."""
+        return "\n".join(
+            f"<{source['metadata']['citation_url']}|{source['metadata']['title']}>"
+            for source in sources
+            if source.get("metadata", {}).get("citation_url")
+        )
+
+
+class SlackClient:
+    """Wrapper for Slack operations with better error handling."""
+    
+    def __init__(self, client: WebClient, loading_text: str = ":hourglass_flowing_sand: Thinking..."):
+        self.client = client
+        self.loading_text = loading_text
+    
+    def post_loading_message(self, channel: str, thread_ts: str) -> Optional[str]:
+        """Post loading message and return timestamp."""
+        try:
+            response = self.client.chat_postMessage(
+                channel=channel,
+                text=self.loading_text,
+                thread_ts=thread_ts
+            )
+            return response["ts"]
+        except SlackApiError:
+            return None
+    
+    def update_message(self, channel: str, ts: str, text: str) -> bool:
+        """Update message and return success status."""
+        try:
+            self.client.chat_update(channel=channel, ts=ts, text=text)
+            return True
+        except SlackApiError:
+            return False
 
 
 class TangerineClient:
@@ -15,9 +98,16 @@ class TangerineClient:
         self.chat_endpoint = f"{api_url}/api/assistants/chat"
     
     def chat(self, assistants: List[str], query: str, session_id: str, 
-             client_name: str, prompt: str) -> Dict[str, Any]:
-        """Send a chat request to Tangerine API."""
-        payload = {
+             client_name: str, prompt: str) -> TangerineResponse:
+        """Send chat request and return structured response."""
+        payload = self._build_payload(assistants, query, session_id, client_name, prompt)
+        response_data = self._make_request(payload)
+        return TangerineResponse.from_dict(response_data)
+    
+    def _build_payload(self, assistants: List[str], query: str, session_id: str, 
+                      client_name: str, prompt: str) -> Dict:
+        """Build API request payload."""
+        return {
             "assistants": assistants,
             "query": query,
             "sessionId": session_id,
@@ -26,7 +116,9 @@ class TangerineClient:
             "stream": False,
             "prompt": prompt
         }
-        
+    
+    def _make_request(self, payload: Dict) -> Dict:
+        """Make HTTP request to Tangerine API."""
         response = requests.post(
             self.chat_endpoint,
             headers={
@@ -40,93 +132,65 @@ class TangerineClient:
         return response.json()
 
 
-class SlackMessageHandler:
-    """Handles Slack message operations."""
+class ErrorHandler:
+    """Handles error scenarios."""
     
-    def post_loading_message(self, client: WebClient, channel: str, thread_ts: str) -> Optional[str]:
-        """Post a loading message and return its timestamp."""
-        try:
-            loading = client.chat_postMessage(
-                channel=channel,
-                text=":hourglass_flowing_sand: Thinking...",
-                thread_ts=thread_ts
-            )
-            return loading["ts"]
-        except SlackApiError as e:
-            print(f"⚠️ Failed to post loading message: {e}")
-            return None
+    def __init__(self, bot_name: str):
+        self.bot_name = bot_name
     
-    def format_response_with_sources(self, text: str, metadata: List[Dict]) -> str:
-        """Format the response text with source citations."""
-        if not metadata:
-            return text
-            
-        sources = metadata[:3]
-        links = "\n".join(
-            f"<{m['metadata']['citation_url']}|{m['metadata']['title']}>"
-            for m in sources
-            if m.get("metadata", {}).get("citation_url")
-        )
-        
-        if links:
-            text += "\n\n*Sources:*\n" + links
-        
-        return text
-    
-    def update_message(self, client: WebClient, channel: str, ts: str, text: str) -> None:
-        """Update an existing message."""
-        try:
-            client.chat_update(
-                channel=channel,
-                ts=ts,
-                text=text
-            )
-        except SlackApiError as e:
-            print(f"⚠️ Failed to update message: {e}")
+    def format_error_message(self, error: Exception) -> str:
+        """Format error for user display."""
+        return f"Oops, {self.bot_name} hit a snag: `{error}`"
 
 
 class ClementineBot:
-    """Main bot orchestrator that coordinates Slack events and Tangerine API calls."""
+    """Main bot orchestrator following single responsibility principle."""
     
-    def __init__(self, tangerine_client: TangerineClient, bot_name: str, 
-                 assistant_list: List[str], default_prompt: str):
+    def __init__(self, tangerine_client: TangerineClient, slack_client: SlackClient,
+                 bot_name: str, assistant_list: List[str], default_prompt: str):
         self.tangerine_client = tangerine_client
+        self.slack_client = slack_client
         self.bot_name = bot_name
         self.assistant_list = assistant_list
         self.default_prompt = default_prompt
-        self.message_handler = SlackMessageHandler()
+        self.formatter = MessageFormatter()
+        self.error_handler = ErrorHandler(bot_name)
     
-    def handle_mention(self, event: Dict, slack_client: WebClient) -> None:
-        """Handle a mention event from Slack."""
-        user_msg = event["text"]
-        session_id = event["user"]
-        thread_ts = event.get("thread_ts", event["ts"])
-        channel = event["channel"]
+    def handle_mention(self, event_dict: Dict, slack_web_client: WebClient) -> None:
+        """Handle mention by orchestrating the response flow."""
+        event = SlackEvent.from_dict(event_dict)
+        loading_ts = self._post_loading_message(event)
         
-        # Post loading message
-        loading_ts = self.message_handler.post_loading_message(slack_client, channel, thread_ts)
         if not loading_ts:
             return
-        
+            
         try:
-            # Get response from Tangerine
-            response_data = self.tangerine_client.chat(
-                assistants=self.assistant_list,
-                query=user_msg,
-                session_id=session_id,
-                client_name=self.bot_name,
-                prompt=self.default_prompt
-            )
-            
-            # Format response
-            text = response_data.get("text_content", "(No response from assistant)").strip()
-            metadata = response_data.get("search_metadata", [])
-            formatted_text = self.message_handler.format_response_with_sources(text, metadata)
-            
-            # Update message with response
-            self.message_handler.update_message(slack_client, channel, loading_ts, formatted_text)
-            
-        except Exception as e:
-            error_msg = f"Oops, {self.bot_name} hit a snag: `{e}`"
-            print(error_msg)
-            self.message_handler.update_message(slack_client, channel, loading_ts, error_msg) 
+            response = self._get_tangerine_response(event)
+            formatted_text = self.formatter.format_with_sources(response)
+            self._update_message(event, loading_ts, formatted_text)
+        except Exception as error:
+            self._handle_error(event, loading_ts, error)
+    
+    def _post_loading_message(self, event: SlackEvent) -> Optional[str]:
+        """Post loading message."""
+        return self.slack_client.post_loading_message(event.channel, event.thread_ts)
+    
+    def _get_tangerine_response(self, event: SlackEvent) -> TangerineResponse:
+        """Get response from Tangerine API."""
+        return self.tangerine_client.chat(
+            assistants=self.assistant_list,
+            query=event.text,
+            session_id=event.user_id,
+            client_name=self.bot_name,
+            prompt=self.default_prompt
+        )
+    
+    def _update_message(self, event: SlackEvent, loading_ts: str, text: str) -> None:
+        """Update Slack message with response."""
+        self.slack_client.update_message(event.channel, loading_ts, text)
+    
+    def _handle_error(self, event: SlackEvent, loading_ts: str, error: Exception) -> None:
+        """Handle and display error."""
+        error_message = self.error_handler.format_error_message(error)
+        print(error_message)
+        self.slack_client.update_message(event.channel, loading_ts, error_message) 
