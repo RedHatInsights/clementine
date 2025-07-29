@@ -20,8 +20,20 @@ class SlackEvent:
     
     @classmethod
     def from_dict(cls, event: Dict) -> 'SlackEvent':
+        """Create SlackEvent from Slack event dictionary with validation."""
+        required_fields = ["text", "user", "channel", "ts"]
+        missing_fields = [field for field in required_fields if field not in event]
+        
+        if missing_fields:
+            raise ValueError(f"Missing required event fields: {missing_fields}")
+        
+        # Additional validation
+        text = event["text"].strip()
+        if not text:
+            raise ValueError("Event text cannot be empty")
+        
         return cls(
-            text=event["text"],
+            text=text,
             user_id=event["user"], 
             channel=event["channel"],
             thread_ts=event.get("thread_ts", event["ts"])
@@ -56,12 +68,20 @@ class MessageFormatter:
         return response.text + f"\n\n*Sources:*\n{links}" if links else response.text
     
     def _build_source_links(self, sources: List[Dict]) -> str:
-        """Build formatted source links."""
-        return "\n".join(
-            f"<{source['metadata']['citation_url']}|{source['metadata']['title']}>"
-            for source in sources
-            if source.get("metadata", {}).get("citation_url")
-        )
+        """Build formatted source links with safe metadata access."""
+        links = []
+        for source in sources:
+            try:
+                metadata = source.get("metadata", {})
+                url = metadata.get("citation_url")
+                title = metadata.get("title", "Source")
+                if url and title:
+                    links.append(f"<{url}|{title}>")
+            except (TypeError, AttributeError):
+                # Skip malformed source entries
+                logger.debug("Skipping malformed source metadata: %s", source)
+                continue
+        return "\n".join(links)
 
 
 class SlackClient:
@@ -81,7 +101,8 @@ class SlackClient:
             )
             return response["ts"]
         except SlackApiError as e:
-            logger.error("Failed to post loading message: %s - %s", e.response['error'], e)
+            error_code = getattr(e.response, 'get', lambda x, default: 'unknown')('error', 'unknown')
+            logger.error("Failed to post loading message: %s - %s", error_code, e)
             return None
     
     def update_message(self, channel: str, ts: str, text: str) -> bool:
@@ -90,7 +111,8 @@ class SlackClient:
             self.client.chat_update(channel=channel, ts=ts, text=text)
             return True
         except SlackApiError as e:
-            logger.error("Failed to update message: %s - %s", e.response['error'], e)
+            error_code = getattr(e.response, 'get', lambda x, default: 'unknown')('error', 'unknown')
+            logger.error("Failed to update message: %s - %s", error_code, e)
             return False
 
 
@@ -98,10 +120,13 @@ class TangerineClient:
     """Handles communication with the Tangerine API."""
     
     def __init__(self, api_url: str, api_token: str, timeout: int = 500):
-        self.api_url = api_url
+        if not api_url or not api_token:
+            raise ValueError("Both api_url and api_token are required")
+        
+        self.api_url = api_url.rstrip('/')  # Remove trailing slash
         self.api_token = api_token
         self.timeout = timeout
-        self.chat_endpoint = f"{api_url}/api/assistants/chat"
+        self.chat_endpoint = f"{self.api_url}/api/assistants/chat"
     
     def chat(self, assistants: List[str], query: str, session_id: str, 
              client_name: str, prompt: str) -> TangerineResponse:
@@ -126,18 +151,34 @@ class TangerineClient:
         }
     
     def _make_request(self, payload: Dict) -> Dict:
-        """Make HTTP request to Tangerine API."""
-        response = requests.post(
-            self.chat_endpoint,
-            headers={
-                "Authorization": f"Bearer {self.api_token}",
-                "Content-Type": "application/json"
-            },
-            json=payload,
-            timeout=self.timeout
-        )
-        response.raise_for_status()
-        return response.json()
+        """Make HTTP request to Tangerine API with comprehensive error handling."""
+        try:
+            response = requests.post(
+                self.chat_endpoint,
+                headers={
+                    "Authorization": f"Bearer {self.api_token}",
+                    "Content-Type": "application/json"
+                },
+                json=payload,
+                timeout=self.timeout
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.Timeout:
+            logger.error("Tangerine API request timed out after %d seconds", self.timeout)
+            raise
+        except requests.exceptions.ConnectionError:
+            logger.error("Failed to connect to Tangerine API at %s", self.chat_endpoint)
+            raise
+        except requests.exceptions.HTTPError as e:
+            logger.error("Tangerine API returned HTTP error %d: %s", e.response.status_code, e)
+            raise
+        except requests.exceptions.JSONDecodeError:
+            logger.error("Tangerine API returned invalid JSON response")
+            raise
+        except Exception as e:
+            logger.error("Unexpected error calling Tangerine API: %s", e)
+            raise
 
 
 class ErrorHandler:
@@ -170,7 +211,12 @@ class ClementineBot:
     
     def handle_mention(self, event_dict: Dict, slack_web_client: WebClient) -> None:
         """Handle mention by orchestrating the response flow."""
-        event = SlackEvent.from_dict(event_dict)
+        try:
+            event = SlackEvent.from_dict(event_dict)
+        except ValueError as e:
+            logger.error("Invalid Slack event format: %s", e)
+            return
+            
         logger.info("Processing mention from user %s in channel %s", event.user_id, event.channel)
         
         loading_ts = self._post_loading_message(event)
@@ -179,7 +225,9 @@ class ClementineBot:
             return
             
         try:
-            logger.debug("Requesting response from Tangerine for query: %s", event.text[:100])
+            # Truncate very long queries for logging
+            query_preview = event.text[:100] + "..." if len(event.text) > 100 else event.text
+            logger.debug("Requesting response from Tangerine for query: %s", query_preview)
             response = self._get_tangerine_response(event)
             logger.debug("Received response with %d metadata sources", len(response.metadata))
             
@@ -205,10 +253,14 @@ class ClementineBot:
     
     def _update_message(self, event: SlackEvent, loading_ts: str, text: str) -> None:
         """Update Slack message with response."""
-        self.slack_client.update_message(event.channel, loading_ts, text)
+        success = self.slack_client.update_message(event.channel, loading_ts, text)
+        if not success:
+            logger.warning("Failed to update message %s in channel %s", loading_ts, event.channel)
     
     def _handle_error(self, event: SlackEvent, loading_ts: str, error: Exception) -> None:
         """Handle and display error."""
         error_message = self.error_handler.format_error_message(error)
         logger.info("Displaying error message to user in channel %s", event.channel)
-        self.slack_client.update_message(event.channel, loading_ts, error_message) 
+        success = self.slack_client.update_message(event.channel, loading_ts, error_message)
+        if not success:
+            logger.error("Failed to display error message to user - they won't see any response") 

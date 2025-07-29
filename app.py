@@ -1,48 +1,59 @@
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 import os
-import logging
-import logging.config
 from dotenv import load_dotenv
+from logging_config import LoggingConfigurator
 from clementine import TangerineClient, ClementineBot, SlackClient
 
 load_dotenv()
 
 # Configure logging
-def setup_logging():
-    """Configure logging with appropriate levels and formatting."""
-    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-    log_format = os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    
-    # Configure root logger
-    logging.basicConfig(
-        level=getattr(logging, log_level),
-        format=log_format,
-        handlers=[
-            logging.StreamHandler(),  # Console output
-            # Add file handler if LOG_FILE is specified
-            *([logging.FileHandler(os.getenv("LOG_FILE"))] if os.getenv("LOG_FILE") else [])
-        ]
-    )
-    
-    # Set specific loggers to appropriate levels
-    logging.getLogger("slack_bolt").setLevel(logging.WARNING)  # Reduce slack_bolt noise
-    logging.getLogger("urllib3").setLevel(logging.WARNING)     # Reduce HTTP noise
-    
-    logger = logging.getLogger(__name__)
-    logger.info("Logging configured - Level: %s", log_level)
-    return logger
+configurator = LoggingConfigurator(
+    level_name=os.getenv("LOG_LEVEL", "INFO"),
+    format_string=os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"),
+    log_file=os.getenv("LOG_FILE")
+)
+logger = configurator.configure(__name__)
 
-logger = setup_logging()
+# Validate required environment variables
+def validate_required_env_vars():
+    """Validate all required environment variables are set."""
+    required_vars = {
+        "SLACK_BOT_TOKEN": "Slack bot token (xoxb-...)",
+        "SLACK_SIGNING_SECRET": "Slack signing secret",
+        "SLACK_APP_TOKEN": "Slack app token (xapp-...)",
+        "TANGERINE_API_URL": "Tangerine API base URL",
+        "TANGERINE_API_TOKEN": "Tangerine API authentication token"
+    }
+    
+    missing_vars = []
+    for var, description in required_vars.items():
+        if not os.getenv(var):
+            missing_vars.append(f"  {var}: {description}")
+    
+    if missing_vars:
+        error_msg = "Missing required environment variables:\n" + "\n".join(missing_vars)
+        logger.error(error_msg)
+        raise SystemExit(f"Configuration Error: {error_msg}")
+
+validate_required_env_vars()
+
 # Load config from environment
 SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")  # xoxb-...
 SLACK_SIGNING_SECRET = os.getenv("SLACK_SIGNING_SECRET")
 SLACK_APP_TOKEN = os.getenv("SLACK_APP_TOKEN")  # xapp-...
 
 BOT_NAME = os.getenv("BOT_NAME", "Clementine")
-ASSISTANT_LIST = os.getenv("ASSISTANT_LIST", "konflux").split(",")
+
+# Validate and clean assistant list
+assistant_list_raw = os.getenv("ASSISTANT_LIST", "konflux")
+ASSISTANT_LIST = [a.strip() for a in assistant_list_raw.split(",") if a.strip()]
+if not ASSISTANT_LIST:
+    logger.warning("No valid assistants in ASSISTANT_LIST, using default: konflux")
+    ASSISTANT_LIST = ["konflux"]
+
 DEFAULT_PROMPT = os.getenv("DEFAULT_PROMPT", "You are a helpful assistant.")
-TANGERINE_API_URL = os.getenv("TANGERINE_API_URL")
+TANGERINE_API_URL = os.getenv("TANGERINE_API_URL").rstrip('/')  # Remove trailing slash
 TANGERINE_API_TOKEN = os.getenv("TANGERINE_API_TOKEN")
 
 # Validate timeout value with proper error handling
