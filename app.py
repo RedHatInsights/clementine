@@ -8,16 +8,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Load config from environment
-SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
+SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")  # xoxb-...
 SLACK_SIGNING_SECRET = os.getenv("SLACK_SIGNING_SECRET")
+SLACK_APP_TOKEN = os.getenv("SLACK_APP_TOKEN")  # xapp-...
+
 BOT_NAME = os.getenv("BOT_NAME", "Clementine")
-ASSISTANT_LIST = os.getenv("ASSISTANT_LIST", "support docs,knowledge base").split(",")
+ASSISTANT_LIST = os.getenv("ASSISTANT_LIST", "konflux").split(",")
 DEFAULT_PROMPT = os.getenv("DEFAULT_PROMPT", "You are a helpful assistant.")
 TANGERINE_API_URL = os.getenv("TANGERINE_API_URL")
 TANGERINE_API_TOKEN = os.getenv("TANGERINE_API_TOKEN")
 
+# Initialize the Slack app
 app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
-
 
 @app.event("app_mention")
 def handle_mention(event, say):
@@ -38,13 +40,13 @@ def handle_mention(event, say):
 
     try:
         response = requests.post(
-            TANGERINE_API_URL,
+            TANGERINE_API_URL + "/api/assistants/chat",
             headers={
                 "Authorization": f"Bearer {TANGERINE_API_TOKEN}",
                 "Content-Type": "application/json"
             },
             json=payload,
-            timeout=15
+            timeout=500
         )
         response.raise_for_status()
         data = response.json()
@@ -68,6 +70,6 @@ def handle_mention(event, say):
         error_message = f"Oops, {BOT_NAME} hit a snag: `{e}`"
         say(error_message, thread_ts=thread_ts)
 
-
+# Start the app using Socket Mode
 if __name__ == "__main__":
-    SocketModeHandler(app, SLACK_BOT_TOKEN).start()
+    SocketModeHandler(app, SLACK_APP_TOKEN).start()
