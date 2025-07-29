@@ -1,9 +1,13 @@
 import requests
 import uuid
+import logging
 from typing import Dict, List, Optional, Any
 from slack_sdk.errors import SlackApiError
 from slack_sdk.web.client import WebClient
 from dataclasses import dataclass
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -77,7 +81,7 @@ class SlackClient:
             )
             return response["ts"]
         except SlackApiError as e:
-            print(f"⚠️ Failed to post loading message: {e.response['error']} - {e}")
+            logger.error("Failed to post loading message: %s - %s", e.response['error'], e)
             return None
     
     def update_message(self, channel: str, ts: str, text: str) -> bool:
@@ -86,7 +90,7 @@ class SlackClient:
             self.client.chat_update(channel=channel, ts=ts, text=text)
             return True
         except SlackApiError as e:
-            print(f"⚠️ Failed to update message: {e.response['error']} - {e}")
+            logger.error("Failed to update message: %s - %s", e.response['error'], e)
             return False
 
 
@@ -102,8 +106,10 @@ class TangerineClient:
     def chat(self, assistants: List[str], query: str, session_id: str, 
              client_name: str, prompt: str) -> TangerineResponse:
         """Send chat request and return structured response."""
+        logger.debug("Sending chat request to Tangerine API for session %s", session_id)
         payload = self._build_payload(assistants, query, session_id, client_name, prompt)
         response_data = self._make_request(payload)
+        logger.debug("Received response from Tangerine API")
         return TangerineResponse.from_dict(response_data)
     
     def _build_payload(self, assistants: List[str], query: str, session_id: str, 
@@ -143,7 +149,7 @@ class ErrorHandler:
     def format_error_message(self, error: Exception) -> str:
         """Format safe error message for user display and log full details."""
         # Log full exception details for debugging (not shown to user)
-        print(f"🔍 DEBUG - Full error details: {type(error).__name__}: {error}")
+        logger.exception("Unhandled error in bot operation: %s", type(error).__name__)
         
         # Return generic, safe message for users
         return f"Oops, {self.bot_name} hit a snag. Please try again in a moment."
@@ -165,15 +171,21 @@ class ClementineBot:
     def handle_mention(self, event_dict: Dict, slack_web_client: WebClient) -> None:
         """Handle mention by orchestrating the response flow."""
         event = SlackEvent.from_dict(event_dict)
-        loading_ts = self._post_loading_message(event)
+        logger.info("Processing mention from user %s in channel %s", event.user_id, event.channel)
         
+        loading_ts = self._post_loading_message(event)
         if not loading_ts:
+            logger.warning("Failed to post loading message, aborting mention handling")
             return
             
         try:
+            logger.debug("Requesting response from Tangerine for query: %s", event.text[:100])
             response = self._get_tangerine_response(event)
+            logger.debug("Received response with %d metadata sources", len(response.metadata))
+            
             formatted_text = self.formatter.format_with_sources(response)
             self._update_message(event, loading_ts, formatted_text)
+            logger.info("Successfully handled mention for user %s", event.user_id)
         except Exception as error:
             self._handle_error(event, loading_ts, error)
     
@@ -198,5 +210,5 @@ class ClementineBot:
     def _handle_error(self, event: SlackEvent, loading_ts: str, error: Exception) -> None:
         """Handle and display error."""
         error_message = self.error_handler.format_error_message(error)
-        print(error_message)
+        logger.info("Displaying error message to user in channel %s", event.channel)
         self.slack_client.update_message(event.channel, loading_ts, error_message) 
