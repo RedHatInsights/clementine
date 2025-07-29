@@ -2,6 +2,7 @@ import requests
 import uuid
 from typing import Dict, List, Optional, Any
 from slack_sdk.errors import SlackApiError
+from slack_sdk.web.client import WebClient
 
 
 class TangerineClient:
@@ -42,13 +43,10 @@ class TangerineClient:
 class SlackMessageHandler:
     """Handles Slack message operations."""
     
-    def __init__(self, client):
-        self.client = client
-    
-    def post_loading_message(self, channel: str, thread_ts: str) -> Optional[str]:
+    def post_loading_message(self, client: WebClient, channel: str, thread_ts: str) -> Optional[str]:
         """Post a loading message and return its timestamp."""
         try:
-            loading = self.client.chat_postMessage(
+            loading = client.chat_postMessage(
                 channel=channel,
                 text=":hourglass_flowing_sand: Thinking...",
                 thread_ts=thread_ts
@@ -75,10 +73,10 @@ class SlackMessageHandler:
         
         return text
     
-    def update_message(self, channel: str, ts: str, text: str) -> None:
+    def update_message(self, client: WebClient, channel: str, ts: str, text: str) -> None:
         """Update an existing message."""
         try:
-            self.client.chat_update(
+            client.chat_update(
                 channel=channel,
                 ts=ts,
                 text=text
@@ -96,18 +94,17 @@ class ClementineBot:
         self.bot_name = bot_name
         self.assistant_list = assistant_list
         self.default_prompt = default_prompt
+        self.message_handler = SlackMessageHandler()
     
-    def handle_mention(self, event: Dict, slack_client) -> None:
+    def handle_mention(self, event: Dict, slack_client: WebClient) -> None:
         """Handle a mention event from Slack."""
-        message_handler = SlackMessageHandler(slack_client)
-        
         user_msg = event["text"]
         session_id = event["user"]
         thread_ts = event.get("thread_ts", event["ts"])
         channel = event["channel"]
         
         # Post loading message
-        loading_ts = message_handler.post_loading_message(channel, thread_ts)
+        loading_ts = self.message_handler.post_loading_message(slack_client, channel, thread_ts)
         if not loading_ts:
             return
         
@@ -124,12 +121,12 @@ class ClementineBot:
             # Format response
             text = response_data.get("text_content", "(No response from assistant)").strip()
             metadata = response_data.get("search_metadata", [])
-            formatted_text = message_handler.format_response_with_sources(text, metadata)
+            formatted_text = self.message_handler.format_response_with_sources(text, metadata)
             
             # Update message with response
-            message_handler.update_message(channel, loading_ts, formatted_text)
+            self.message_handler.update_message(slack_client, channel, loading_ts, formatted_text)
             
         except Exception as e:
             error_msg = f"Oops, {self.bot_name} hit a snag: `{e}`"
             print(error_msg)
-            message_handler.update_message(channel, loading_ts, error_msg) 
+            self.message_handler.update_message(slack_client, channel, loading_ts, error_msg) 
