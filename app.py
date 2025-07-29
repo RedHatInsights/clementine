@@ -44,7 +44,26 @@ ASSISTANT_LIST = os.getenv("ASSISTANT_LIST", "konflux").split(",")
 DEFAULT_PROMPT = os.getenv("DEFAULT_PROMPT", "You are a helpful assistant.")
 TANGERINE_API_URL = os.getenv("TANGERINE_API_URL")
 TANGERINE_API_TOKEN = os.getenv("TANGERINE_API_TOKEN")
-TANGERINE_API_TIMEOUT = int(os.getenv("TANGERINE_API_TIMEOUT", 500))
+
+# Validate timeout value with proper error handling
+def get_timeout_value() -> int:
+    """Get and validate the API timeout value from environment."""
+    timeout_str = os.getenv("TANGERINE_API_TIMEOUT", "500")
+    try:
+        timeout_value = int(timeout_str)
+        if timeout_value <= 0:
+            logger.warning("Invalid timeout value %d, must be positive. Using default 500.", timeout_value)
+            return 500
+        if timeout_value > 3600:  # 1 hour max
+            logger.warning("Timeout value %d too large, capping at 3600 seconds.", timeout_value)
+            return 3600
+        return timeout_value
+    except ValueError:
+        logger.error("Invalid timeout value '%s', must be a number. Using default 500.", timeout_str)
+        return 500
+
+TANGERINE_API_TIMEOUT = get_timeout_value()
+logger.info("Using Tangerine API timeout: %d seconds", TANGERINE_API_TIMEOUT)
 
 # Initialize the Slack app
 logger.info("Initializing Slack app")
