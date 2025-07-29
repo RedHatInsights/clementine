@@ -141,8 +141,12 @@ class ErrorHandler:
         self.bot_name = bot_name
     
     def format_error_message(self, error: Exception) -> str:
-        """Format error for user display."""
-        return f"Oops, {self.bot_name} hit a snag: `{error}`"
+        """Format safe error message for user display and log full details."""
+        # Log full exception details for debugging (not shown to user)
+        print(f"🔍 DEBUG - Full error details: {type(error).__name__}: {error}")
+        
+        # Return generic, safe message for users
+        return f"Oops, {self.bot_name} hit a snag. Please try again in a moment."
 
 
 class ClementineBot:
