@@ -34,7 +34,6 @@ def setup_logging():
     return logger
 
 logger = setup_logging()
-git 
 # Load config from environment
 SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")  # xoxb-...
 SLACK_SIGNING_SECRET = os.getenv("SLACK_SIGNING_SECRET")
