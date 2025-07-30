@@ -53,7 +53,7 @@ if not ASSISTANT_LIST:
     ASSISTANT_LIST = ["konflux"]
 
 DEFAULT_PROMPT = os.getenv("DEFAULT_PROMPT", "You are a helpful assistant.")
-TANGERINE_API_URL = os.getenv("TANGERINE_API_URL").rstrip('/')  # Remove trailing slash
+TANGERINE_API_URL = os.getenv("TANGERINE_API_URL", "").rstrip('/')  # Remove trailing slash
 TANGERINE_API_TOKEN = os.getenv("TANGERINE_API_TOKEN")
 
 # Validate timeout value with proper error handling
