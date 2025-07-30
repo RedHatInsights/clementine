@@ -6,7 +6,7 @@ This directory contains GitHub Actions workflows for automated testing and quali
 
 ### `test.yml` - Test Suite
 - **Triggers**: Pull requests and pushes to `main`/`master`
-- **Python versions**: 3.11, 3.12  
+- **Python versions**: 3.11  
 - **Features**:
   - Runs full test suite with pytest
   - Generates test coverage report
