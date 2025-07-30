@@ -8,8 +8,10 @@ from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
-# Namespace UUID for generating deterministic session IDs
-CLEMENTINE_NAMESPACE = uuid.UUID('6ba7b810-9dad-11d1-80b4-00c04fd430c8')
+# Project-specific namespace UUID for generating deterministic session IDs
+# This UUID was generated specifically for the Clementine project to ensure uniqueness
+# and avoid potential collisions with other systems.
+CLEMENTINE_NAMESPACE = uuid.UUID('12345678-1234-5678-1234-567812345678')  # Replace with an actual UUID
 
 
 def generate_session_id(channel: str, thread_ts: str) -> str:
