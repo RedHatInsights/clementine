@@ -6,7 +6,7 @@ from slack_sdk.web.client import WebClient
 
 from .slack_client import SlackClient, SlackEvent
 from .tangerine import TangerineClient, generate_session_id
-from .formatters import MessageFormatter
+from .formatters import MessageFormatter, BlockKitFormatter
 from .error_handling import ErrorHandler
 
 logger = logging.getLogger(__name__)
@@ -16,13 +16,14 @@ class ClementineBot:
     """Main bot orchestrator following single responsibility principle."""
     
     def __init__(self, tangerine_client: TangerineClient, slack_client: SlackClient,
-                 bot_name: str, assistant_list: list[str], default_prompt: str):
+                 bot_name: str, assistant_list: list[str], default_prompt: str,
+                 formatter=None):
         self.tangerine_client = tangerine_client
         self.slack_client = slack_client
         self.bot_name = bot_name
         self.assistant_list = assistant_list
         self.default_prompt = default_prompt
-        self.formatter = MessageFormatter()
+        self.formatter = formatter or MessageFormatter()
         self.error_handler = ErrorHandler(bot_name)
     
     def handle_mention(self, event_dict: Dict, slack_web_client: WebClient) -> None:
@@ -47,8 +48,8 @@ class ClementineBot:
             response = self._get_tangerine_response(event)
             logger.debug("Received response with %d metadata sources", len(response.metadata))
             
-            formatted_text = self.formatter.format_with_sources(response)
-            self._update_message(event, loading_ts, formatted_text)
+            formatted_message = self.formatter.format_with_sources(response)
+            self._update_message(event, loading_ts, formatted_message)
             logger.info("Successfully handled mention for user %s", event.user_id)
         except Exception as error:
             self._handle_error(event, loading_ts, error)
@@ -69,9 +70,17 @@ class ClementineBot:
             prompt=self.default_prompt
         )
     
-    def _update_message(self, event: SlackEvent, loading_ts: str, text: str) -> None:
-        """Update Slack message with response."""
-        success = self.slack_client.update_message(event.channel, loading_ts, text)
+    def _update_message(self, event: SlackEvent, loading_ts: str, formatted_message) -> None:
+        """Update Slack message with response (text or Block Kit)."""
+        if isinstance(formatted_message, dict):
+            # Block Kit message
+            success = self.slack_client.update_message_with_blocks(
+                event.channel, loading_ts, formatted_message
+            )
+        else:
+            # Plain text message
+            success = self.slack_client.update_message(event.channel, loading_ts, formatted_message)
+        
         if not success:
             logger.warning("Failed to update message %s in channel %s", loading_ts, event.channel)
     
