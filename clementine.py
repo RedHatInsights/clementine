@@ -111,7 +111,7 @@ class SlackClient:
             self.client.chat_update(channel=channel, ts=ts, text=text)
             return True
         except SlackApiError as e:
-            error_code = getattr(e.response, 'get', lambda x, default: 'unknown')('error', 'unknown')
+            error_code = self._extract_error_code(e)
             logger.error("Failed to update message: %s - %s", error_code, e)
             return False
 
