@@ -63,7 +63,7 @@ class SlackEvent:
         """
         # Pattern to match Slack user mentions at the start of text
         # <@U followed by alphanumeric characters, then >
-        mention_pattern = r'^<@U[A-Z0-9]+>\s*'
+        mention_pattern = r'^<@U[A-Za-z0-9]+>\s*'
         return re.sub(mention_pattern, '', text).strip()
 
 
