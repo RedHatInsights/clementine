@@ -1,10 +1,18 @@
 """Message formatting utilities."""
 
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Protocol, Union
 from .tangerine import TangerineResponse
 
 logger = logging.getLogger(__name__)
+
+
+class ResponseFormatter(Protocol):
+    """Protocol for response formatters."""
+    
+    def format_with_sources(self, response: TangerineResponse) -> Union[str, Dict]:
+        """Format response with source citations."""
+        ...
 
 
 class MessageFormatter:

@@ -1,12 +1,12 @@
 """Main bot orchestration logic."""
 
 import logging
-from typing import Dict
+from typing import Dict, Union
 from slack_sdk.web.client import WebClient
 
 from .slack_client import SlackClient, SlackEvent
 from .tangerine import TangerineClient, generate_session_id
-from .formatters import MessageFormatter, BlockKitFormatter
+from .formatters import MessageFormatter, BlockKitFormatter, ResponseFormatter
 from .error_handling import ErrorHandler
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ class ClementineBot:
     
     def __init__(self, tangerine_client: TangerineClient, slack_client: SlackClient,
                  bot_name: str, assistant_list: list[str], default_prompt: str,
-                 formatter=None):
+                 formatter: ResponseFormatter | None = None):
         self.tangerine_client = tangerine_client
         self.slack_client = slack_client
         self.bot_name = bot_name
@@ -70,7 +70,7 @@ class ClementineBot:
             prompt=self.default_prompt
         )
     
-    def _update_message(self, event: SlackEvent, loading_ts: str, formatted_message) -> None:
+    def _update_message(self, event: SlackEvent, loading_ts: str, formatted_message: Union[str, Dict]) -> None:
         """Update Slack message with response (text or Block Kit)."""
         if isinstance(formatted_message, dict):
             # Block Kit message
