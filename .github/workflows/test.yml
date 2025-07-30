@@ -1,0 +1,44 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install pipenv
+      run: |
+        python -m pip install --upgrade pip
+        pip install pipenv
+
+    - name: Cache pipenv dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.local/share/virtualenvs
+        key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pipenv-
+
+    - name: Install dependencies
+      run: |
+        pipenv install --dev
+
+    - name: Run tests
+      run: |
+        pipenv run python -m pytest tests/ -v --tb=short
+
+    - name: Check test coverage
+      run: |
+        pipenv run python -m pytest tests/ --cov=clementine --cov-report=term-missing 

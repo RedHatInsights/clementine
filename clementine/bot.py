@@ -5,7 +5,7 @@ from typing import Dict
 from slack_sdk.web.client import WebClient
 
 from .slack_client import SlackClient, SlackEvent
-from .tangerine import TangerineClient
+from .tangerine import TangerineClient, generate_session_id
 from .formatters import MessageFormatter
 from .error_handling import ErrorHandler
 
@@ -59,10 +59,12 @@ class ClementineBot:
     
     def _get_tangerine_response(self, event: SlackEvent):
         """Get response from Tangerine API."""
+        # Create deterministic UUID session ID from channel and thread
+        session_id = generate_session_id(event.channel, event.thread_ts)
         return self.tangerine_client.chat(
             assistants=self.assistant_list,
             query=event.text,
-            session_id=event.user_id,
+            session_id=session_id,
             client_name=self.bot_name,
             prompt=self.default_prompt
         )

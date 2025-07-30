@@ -1,8 +1,9 @@
 import pytest
 from unittest.mock import Mock
 import requests
+import uuid
 
-from clementine.tangerine import TangerineResponse, TangerineClient
+from clementine.tangerine import TangerineResponse, TangerineClient, generate_session_id
 
 
 class TestTangerineResponse:
@@ -115,3 +116,35 @@ class TestTangerineClient:
         
         assert client.api_url == "http://example.com"
         assert client.chat_endpoint == "http://example.com/api/assistants/chat" 
+
+
+class TestGenerateSessionId:
+    """Test deterministic session ID generation."""
+    
+    def test_generates_valid_uuid(self):
+        """Test that session IDs are valid UUIDs."""
+        session_id = generate_session_id("C123", "1234567890.100")
+        
+        # Should be able to parse as UUID
+        uuid_obj = uuid.UUID(session_id)
+        assert str(uuid_obj) == session_id
+        
+    def test_deterministic_generation(self):
+        """Test that same inputs always produce same session ID."""
+        channel = "C123456"
+        thread_ts = "1234567890.100"
+        
+        session_id1 = generate_session_id(channel, thread_ts)
+        session_id2 = generate_session_id(channel, thread_ts)
+        
+        assert session_id1 == session_id2
+        
+    def test_different_inputs_different_ids(self):
+        """Test that different inputs produce different session IDs."""
+        session_id1 = generate_session_id("C123", "1234567890.100")
+        session_id2 = generate_session_id("C456", "1234567890.100")
+        session_id3 = generate_session_id("C123", "1234567890.200")
+        
+        assert session_id1 != session_id2
+        assert session_id1 != session_id3
+        assert session_id2 != session_id3 

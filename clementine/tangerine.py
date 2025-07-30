@@ -8,6 +8,21 @@ from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
+# Project-specific namespace UUID for generating deterministic session IDs
+# This UUID was generated specifically for the Clementine project to ensure uniqueness
+# and avoid potential collisions with other systems.
+CLEMENTINE_NAMESPACE = uuid.UUID('3f2504e0-4f89-11d3-9a0c-0305e82c3301')  # Unique UUID for the Clementine project
+
+
+def generate_session_id(channel: str, thread_ts: str) -> str:
+    """Generate deterministic UUID session ID from channel and thread timestamp.
+    
+    Creates consistent session IDs for the same Slack thread across bot restarts.
+    Uses UUID5 with a fixed namespace for deterministic generation.
+    """
+    session_key = f"{channel}_{thread_ts}"
+    return str(uuid.uuid5(CLEMENTINE_NAMESPACE, session_key))
+
 
 @dataclass
 class TangerineResponse:
