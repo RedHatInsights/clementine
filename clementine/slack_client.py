@@ -1,6 +1,7 @@
 """Slack client and event handling."""
 
 import logging
+import re
 from typing import Optional
 from dataclasses import dataclass
 from slack_sdk.errors import SlackApiError
@@ -31,12 +32,39 @@ class SlackEvent:
         if not text:
             raise ValueError("Event text cannot be empty")
         
+        # Remove bot mention from the beginning of the text
+        text = cls._strip_bot_mention(text)
+        if not text:
+            raise ValueError("Event text cannot be empty after removing bot mention")
+        
         return cls(
             text=text,
             user_id=event["user"], 
             channel=event["channel"],
             thread_ts=event.get("thread_ts", event["ts"])
         )
+    
+    @staticmethod
+    def _strip_bot_mention(text: str) -> str:
+        """Remove bot mention from the beginning of text.
+        
+        Slack mentions have format <@U1234567890> where U1234567890 is the user ID.
+        This method removes such mentions from the start of the text.
+        
+        Args:
+            text: The original text that may contain a bot mention
+            
+        Returns:
+            Text with bot mention removed and whitespace stripped
+            
+        Examples:
+            "<@U098PF40S1E> what is tekton?" -> "what is tekton?"
+            "what is tekton?" -> "what is tekton?"
+        """
+        # Pattern to match Slack user mentions at the start of text
+        # <@U followed by alphanumeric characters, then >
+        mention_pattern = r'^<@U[A-Z0-9]+>\s*'
+        return re.sub(mention_pattern, '', text).strip()
 
 
 class SlackClient:

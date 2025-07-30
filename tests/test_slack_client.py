@@ -74,6 +74,57 @@ class TestSlackEvent:
         
         with pytest.raises(ValueError, match="Event text cannot be empty"):
             SlackEvent.from_dict(event_dict)
+    
+    def test_strips_bot_mention_from_text(self):
+        """Test that bot mentions are stripped from the beginning of text."""
+        event_dict = {
+            "text": "<@U098PF40S1E> what is tekton?",
+            "user": "U123456",
+            "channel": "C789012",
+            "ts": "1234567890.123"
+        }
+        
+        event = SlackEvent.from_dict(event_dict)
+        
+        assert event.text == "what is tekton?"
+    
+    def test_strips_bot_mention_with_extra_whitespace(self):
+        """Test that bot mentions and extra whitespace are properly stripped."""
+        event_dict = {
+            "text": "<@U098PF40S1E>   what is tekton?",
+            "user": "U123456",
+            "channel": "C789012",
+            "ts": "1234567890.123"
+        }
+        
+        event = SlackEvent.from_dict(event_dict)
+        
+        assert event.text == "what is tekton?"
+    
+    def test_text_without_bot_mention_unchanged(self):
+        """Test that text without bot mention at start is unchanged."""
+        event_dict = {
+            "text": "what is tekton?",
+            "user": "U123456",
+            "channel": "C789012",
+            "ts": "1234567890.123"
+        }
+        
+        event = SlackEvent.from_dict(event_dict)
+        
+        assert event.text == "what is tekton?"
+    
+    def test_error_when_only_bot_mention(self):
+        """Test error when text contains only bot mention."""
+        event_dict = {
+            "text": "<@U098PF40S1E>",
+            "user": "U123456",
+            "channel": "C789012",
+            "ts": "1234567890.123"
+        }
+        
+        with pytest.raises(ValueError, match="Event text cannot be empty after removing bot mention"):
+            SlackEvent.from_dict(event_dict)
 
 
 class TestSlackClient:
