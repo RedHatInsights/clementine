@@ -20,7 +20,6 @@ configurator = LoggingConfigurator(
 logger = configurator.configure(__name__)
 
 # Enable debug logging for feedback components
-import logging
 logging.getLogger("clementine.feedback_handler").setLevel(logging.DEBUG)
 logging.getLogger("clementine.slack_client").setLevel(logging.DEBUG)
 
