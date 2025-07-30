@@ -243,4 +243,51 @@ class TestSlackClient:
         
         result = slack_client.update_message("C123", "1234567890.123", "Updated text")
         
+        assert result is False
+    
+    def test_update_message_with_blocks_success(self):
+        """Test successful Block Kit message update."""
+        mock_web_client = Mock(spec=WebClient)
+        mock_web_client.chat_update.return_value = {"ok": True}
+        
+        slack_client = SlackClient(mock_web_client)
+        
+        blocks_message = {
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": "Updated content"}
+                }
+            ],
+            "text": "Updated content"
+        }
+        
+        result = slack_client.update_message_with_blocks("C123", "1234567890.123", blocks_message)
+        
+        assert result is True
+        mock_web_client.chat_update.assert_called_once_with(
+            channel="C123",
+            ts="1234567890.123",
+            blocks=blocks_message["blocks"],
+            text=blocks_message["text"]
+        )
+    
+    def test_update_message_with_blocks_slack_error(self):
+        """Test handling of Block Kit message update errors."""
+        mock_web_client = Mock(spec=WebClient)
+        mock_response = Mock()
+        mock_response.get.return_value = "invalid_blocks"
+        slack_error = SlackApiError("Error", mock_response)
+        slack_error.response = mock_response
+        mock_web_client.chat_update.side_effect = slack_error
+        
+        slack_client = SlackClient(mock_web_client)
+        
+        blocks_message = {
+            "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "Content"}}],
+            "text": "Content"
+        }
+        
+        result = slack_client.update_message_with_blocks("C123", "1234567890.123", blocks_message)
+        
         assert result is False 

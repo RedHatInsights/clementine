@@ -94,11 +94,26 @@ class SlackClient:
             return None
     
     def update_message(self, channel: str, ts: str, text: str) -> bool:
-        """Update message and return success status."""
+        """Update message with plain text and return success status."""
         try:
             self.client.chat_update(channel=channel, ts=ts, text=text)
             return True
         except SlackApiError as e:
             error_code = self._extract_error_code(e)
             logger.error("Failed to update message: %s - %s", error_code, e)
+            return False
+    
+    def update_message_with_blocks(self, channel: str, ts: str, blocks_message: dict) -> bool:
+        """Update message with Block Kit blocks and return success status."""
+        try:
+            self.client.chat_update(
+                channel=channel, 
+                ts=ts, 
+                blocks=blocks_message["blocks"],
+                text=blocks_message["text"]  # Fallback text for notifications
+            )
+            return True
+        except SlackApiError as e:
+            error_code = self._extract_error_code(e)
+            logger.error("Failed to update message with blocks: %s - %s", error_code, e)
             return False 
