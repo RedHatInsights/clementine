@@ -7,15 +7,14 @@ name = "pypi"
 slack-bolt = "*"
 requests = "*"
 python-dotenv = "*"
-flake8 = "*"
-black = "*"
-isort = "*"
 
 [dev-packages]
 pytest = "*"
 pytest-cov = "*"
 pytest-mock = "*"
+flake8 = "*"
+black = "*"
+isort = "*"
 
 [requires]
 python_version = "3.11"
-python_full_version = "3.11.9"
