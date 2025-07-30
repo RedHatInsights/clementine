@@ -9,7 +9,7 @@ class TestMessageFormatter:
     def test_format_with_sources_no_metadata(self):
         """Test formatting when no metadata is provided."""
         formatter = MessageFormatter()
-        response = TangerineResponse(text="Hello", metadata=[], interaction_id="test-123", interaction_id="test-123")
+        response = TangerineResponse(text="Hello", metadata=[], interaction_id="test-123")
         
         result = formatter.format_with_sources(response)
         
@@ -22,7 +22,7 @@ class TestMessageFormatter:
             {"metadata": {"citation_url": "http://example.com", "title": "Example"}},
             {"metadata": {"citation_url": "http://test.com", "title": "Test"}}
         ]
-        response = TangerineResponse(text="Hello", metadata=metadata, interaction_id="test-123", interaction_id="test-123")
+        response = TangerineResponse(text="Hello", metadata=metadata, interaction_id="test-123")
         
         result = formatter.format_with_sources(response)
         
@@ -37,7 +37,7 @@ class TestMessageFormatter:
             {"invalid": "structure"},  # Malformed - should be skipped
             {"metadata": {"citation_url": "http://test.com"}}  # Missing title - gets default "Source"
         ]
-        response = TangerineResponse(text="Hello", metadata=metadata, interaction_id="test-123", interaction_id="test-123")
+        response = TangerineResponse(text="Hello", metadata=metadata, interaction_id="test-123")
         
         result = formatter.format_with_sources(response)
         
@@ -65,7 +65,7 @@ class TestBlockKitFormatter:
     
     def test_format_with_ai_disclosure_enabled(self):
         """Test Block Kit formatting with AI disclosure enabled."""
-        formatter = BlockKitFormatter(ai_disclosure_enabled=True)
+        formatter = BlockKitFormatter(ai_disclosure_enabled=True, feedback_enabled=False)
         response = TangerineResponse(text="Hello world", metadata=[], interaction_id="test-123")
         
         result = formatter.format_with_sources(response)
@@ -90,7 +90,7 @@ class TestBlockKitFormatter:
     
     def test_format_with_ai_disclosure_disabled(self):
         """Test Block Kit formatting with AI disclosure disabled."""
-        formatter = BlockKitFormatter(ai_disclosure_enabled=False)
+        formatter = BlockKitFormatter(ai_disclosure_enabled=False, feedback_enabled=False)
         response = TangerineResponse(text="Hello world", metadata=[], interaction_id="test-123")
         
         result = formatter.format_with_sources(response)
@@ -104,7 +104,7 @@ class TestBlockKitFormatter:
     
     def test_format_with_sources_and_ai_disclosure(self):
         """Test Block Kit formatting with sources and AI disclosure."""
-        formatter = BlockKitFormatter(ai_disclosure_enabled=True)
+        formatter = BlockKitFormatter(ai_disclosure_enabled=True, feedback_enabled=False)
         metadata = [
             {"metadata": {"citation_url": "http://example.com", "title": "Example"}},
             {"metadata": {"citation_url": "http://test.com", "title": "Test"}}
@@ -134,7 +134,7 @@ class TestBlockKitFormatter:
     
     def test_format_with_malformed_sources(self):
         """Test Block Kit formatting with malformed source metadata."""
-        formatter = BlockKitFormatter(ai_disclosure_enabled=True)
+        formatter = BlockKitFormatter(ai_disclosure_enabled=True, feedback_enabled=False)
         metadata = [
             {"metadata": {"citation_url": "http://example.com", "title": "Example"}},
             {"invalid": "structure"},  # Malformed - should be skipped
@@ -155,7 +155,7 @@ class TestBlockKitFormatter:
     
     def test_format_with_no_valid_sources(self):
         """Test Block Kit formatting when no sources are valid."""
-        formatter = BlockKitFormatter(ai_disclosure_enabled=True)
+        formatter = BlockKitFormatter(ai_disclosure_enabled=True, feedback_enabled=False)
         metadata = [
             {"invalid": "structure"},
             {"metadata": {}}  # No URL or title
@@ -174,7 +174,8 @@ class TestBlockKitFormatter:
         custom_text = "Custom AI warning message"
         formatter = BlockKitFormatter(
             ai_disclosure_enabled=True,
-            ai_disclosure_text=custom_text
+            ai_disclosure_text=custom_text,
+            feedback_enabled=False
         )
         response = TangerineResponse(text="Hello", metadata=[], interaction_id="test-123")
         
@@ -185,7 +186,7 @@ class TestBlockKitFormatter:
     
     def test_fallback_text_includes_source_titles(self):
         """Test that fallback text includes source information for accessibility."""
-        formatter = BlockKitFormatter(ai_disclosure_enabled=True)
+        formatter = BlockKitFormatter(ai_disclosure_enabled=True, feedback_enabled=False)
         metadata = [
             {"metadata": {"citation_url": "http://example.com", "title": "Example Doc"}},
             {"metadata": {"citation_url": "http://test.com", "title": "Test Page"}}
@@ -199,7 +200,7 @@ class TestBlockKitFormatter:
     
     def test_sources_limited_to_three(self):
         """Test that sources are limited to three in Block Kit format."""
-        formatter = BlockKitFormatter(ai_disclosure_enabled=True)
+        formatter = BlockKitFormatter(ai_disclosure_enabled=True, feedback_enabled=False)
         metadata = [
             {"metadata": {"citation_url": f"http://example{i}.com", "title": f"Example {i}"}}
             for i in range(5)
