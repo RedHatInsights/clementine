@@ -19,7 +19,7 @@ class TestTangerineResponse:
             ]
         }
         
-        response = TangerineResponse.from_dict(data, "test-interaction-123")
+        response = TangerineResponse.from_dict(data)
         
         assert response.text == "Here's your answer"
         assert len(response.metadata) == 2
@@ -29,7 +29,7 @@ class TestTangerineResponse:
         """Test default message when content is missing."""
         data = {"search_metadata": []}
         
-        response = TangerineResponse.from_dict(data, "test-interaction-123")
+        response = TangerineResponse.from_dict(data)
         
         assert response.text == "(No response from assistant)"
         assert response.metadata == []
@@ -38,7 +38,7 @@ class TestTangerineResponse:
         """Test that text content is stripped."""
         data = {"text_content": "  Answer  "}
         
-        response = TangerineResponse.from_dict(data, "test-interaction-123")
+        response = TangerineResponse.from_dict(data)
         
         assert response.text == "Answer"
 

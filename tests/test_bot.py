@@ -16,7 +16,8 @@ class TestClementineBot:
         mock_tangerine = Mock()
         mock_tangerine.chat.return_value = TangerineResponse(
             text="Response from AI",
-            metadata=[{"metadata": {"citation_url": "http://example.com", "title": "Example"}}]
+            metadata=[{"metadata": {"citation_url": "http://example.com", "title": "Example"}}],
+            interaction_id="test-interaction-123"
         )
         
         mock_slack_client = Mock()

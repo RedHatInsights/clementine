@@ -29,12 +29,14 @@ class TangerineResponse:
     """Value object representing a Tangerine API response."""
     text: str
     metadata: List[Dict]
+    interaction_id: str
     
     @classmethod
-    def from_dict(cls, data: Dict) -> 'TangerineResponse':
+    def from_dict(cls, data: Dict, interaction_id: str) -> 'TangerineResponse':
         return cls(
             text=data.get("text_content", "(No response from assistant)").strip(),
-            metadata=data.get("search_metadata", [])
+            metadata=data.get("search_metadata", []),
+            interaction_id=interaction_id
         )
 
 
@@ -57,7 +59,9 @@ class TangerineClient:
         payload = self._build_payload(assistants, query, session_id, client_name, prompt)
         response_data = self._make_request(payload)
         logger.debug("Received response from Tangerine API")
-        return TangerineResponse.from_dict(response_data)
+        # Extract interaction_id from the payload we sent
+        interaction_id = payload["interactionId"]
+        return TangerineResponse.from_dict(response_data, interaction_id)
     
     def _build_payload(self, assistants: List[str], query: str, session_id: str, 
                       client_name: str, prompt: str) -> Dict:

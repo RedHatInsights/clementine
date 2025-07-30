@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 from clementine.config.logging import LoggingConfigurator
 from clementine import TangerineClient, ClementineBot, SlackClient
 from clementine.formatters import MessageFormatter, BlockKitFormatter
+from clementine.feedback_client import FeedbackClient
+from clementine.feedback_handler import FeedbackHandler
 
 load_dotenv()
 
@@ -16,6 +18,11 @@ configurator = LoggingConfigurator(
     log_file=os.getenv("LOG_FILE")
 )
 logger = configurator.configure(__name__)
+
+# Enable debug logging for feedback components
+import logging
+logging.getLogger("clementine.feedback_handler").setLevel(logging.DEBUG)
+logging.getLogger("clementine.slack_client").setLevel(logging.DEBUG)
 
 # Validate required environment variables
 def validate_required_env_vars():
@@ -84,6 +91,10 @@ AI_DISCLOSURE_TEXT = os.getenv("AI_DISCLOSURE_TEXT", "This response was generate
 
 logger.info("AI disclosure enabled: %s", AI_DISCLOSURE_ENABLED)
 
+# Feedback Configuration
+FEEDBACK_ENABLED = os.getenv("FEEDBACK_ENABLED", "true").lower() == "true"
+logger.info("User feedback enabled: %s", FEEDBACK_ENABLED)
+
 # Initialize the Slack app
 logger.info("Initializing Slack app")
 app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
@@ -98,16 +109,29 @@ tangerine_client = TangerineClient(
 
 slack_client = SlackClient(app.client)
 
+# Initialize feedback components if enabled
+if FEEDBACK_ENABLED:
+    feedback_client = FeedbackClient(
+        api_url=TANGERINE_API_URL,
+        api_token=TANGERINE_API_TOKEN
+    )
+    feedback_handler = FeedbackHandler(feedback_client, slack_client)
+    logger.info("Feedback client and handler initialized")
+else:
+    feedback_handler = None
+    logger.info("Feedback disabled - skipping feedback component initialization")
+
 # Choose formatter based on AI disclosure configuration
 if AI_DISCLOSURE_ENABLED:
     formatter = BlockKitFormatter(
         ai_disclosure_enabled=AI_DISCLOSURE_ENABLED,
-        ai_disclosure_text=AI_DISCLOSURE_TEXT
+        ai_disclosure_text=AI_DISCLOSURE_TEXT,
+        feedback_enabled=FEEDBACK_ENABLED
     )
-    logger.info("Using Block Kit formatter with AI disclosure")
+    logger.info("Using Block Kit formatter with AI disclosure and feedback: %s", FEEDBACK_ENABLED)
 else:
     formatter = MessageFormatter()
-    logger.info("Using plain text formatter")
+    logger.info("Using plain text formatter (feedback not available with plain text)")
 
 clementine_bot = ClementineBot(
     tangerine_client=tangerine_client,
@@ -126,6 +150,29 @@ def handle_mention(event, say, client):
     logger.debug("Received app mention from user %s in channel %s", 
                 event.get('user'), event.get('channel'))
     clementine_bot.handle_mention(event, client)
+
+@app.action("feedback_like")
+@app.action("feedback_dislike")
+def handle_feedback_button(ack, body, respond):
+    """Handle feedback button interactions."""
+    # Immediately show "Sending feedback..." by updating the message
+    try:
+        if FEEDBACK_ENABLED and feedback_handler:
+            logger.debug("Received feedback button interaction from user %s", 
+                        body.get('user', {}).get('id', 'unknown'))
+            
+            # Show immediate "Sending feedback..." response
+            feedback_handler.show_sending_feedback_message(body, respond)
+            ack()  # Acknowledge the interaction
+            
+            # Process feedback in background
+            feedback_handler.handle_feedback_button_async(body, respond)
+        else:
+            ack()
+            logger.warning("Received feedback button interaction but feedback is disabled")
+    except Exception as e:
+        ack()
+        logger.error("Error in feedback button handler: %s", e)
 
 # Start the app using Socket Mode
 if __name__ == "__main__":

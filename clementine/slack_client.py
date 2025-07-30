@@ -119,4 +119,58 @@ class SlackClient:
         except SlackApiError as e:
             error_code = self._extract_error_code(e)
             logger.error("Failed to update message with blocks: %s - %s", error_code, e)
-            return False 
+            return False
+    
+    def get_message(self, channel: str, ts: str) -> Optional[dict]:
+        """Get message content by channel and timestamp."""
+        try:
+            # Convert timestamp to float for calculations
+            target_ts = float(ts)
+            
+            # Get a small window around the target timestamp (±10 seconds)
+            oldest = str(target_ts - 10)
+            latest = str(target_ts + 10)
+            
+            response = self.client.conversations_history(
+                channel=channel,
+                oldest=oldest,
+                latest=latest,
+                inclusive=True,
+                limit=100  # Get more messages to search through
+            )
+            
+            messages = response.get("messages", [])
+            
+            # Find the exact message by timestamp
+            for message in messages:
+                if message.get("ts") == ts:
+                    logger.debug("Found message with ts %s in channel %s", ts, channel)
+                    return message
+            
+            # If exact match not found, try finding the closest one
+            closest_message = None
+            min_diff = float('inf')
+            
+            for message in messages:
+                msg_ts = float(message.get("ts", 0))
+                diff = abs(msg_ts - target_ts)
+                if diff < min_diff:
+                    min_diff = diff
+                    closest_message = message
+            
+            if closest_message and min_diff < 1.0:  # Within 1 second
+                logger.debug("Found closest message (diff: %.3fs) for ts %s in channel %s", 
+                           min_diff, ts, channel)
+                return closest_message
+            
+            logger.warning("No message found for ts %s in channel %s (searched %d messages)", 
+                          ts, channel, len(messages))
+            return None
+                
+        except SlackApiError as e:
+            error_code = self._extract_error_code(e)
+            logger.error("Failed to get message: %s - %s", error_code, e)
+            return None
+        except ValueError as e:
+            logger.error("Invalid timestamp format %s: %s", ts, e)
+            return None 
