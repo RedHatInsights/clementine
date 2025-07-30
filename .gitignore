@@ -1,1 +1,12 @@
 __pycache__/
+
+# Coverage files
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.pytest_cache/
+
+# Environment files
+.env
+.env.local

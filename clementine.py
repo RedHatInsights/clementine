@@ -91,6 +91,10 @@ class SlackClient:
         self.client = client
         self.loading_text = loading_text
     
+    def _extract_error_code(self, slack_error: SlackApiError) -> str:
+        """Extract error code from SlackApiError safely."""
+        return slack_error.response.get('error', 'unknown') if hasattr(slack_error.response, 'get') else 'unknown'
+    
     def post_loading_message(self, channel: str, thread_ts: str) -> Optional[str]:
         """Post loading message and return timestamp."""
         try:
@@ -101,7 +105,7 @@ class SlackClient:
             )
             return response["ts"]
         except SlackApiError as e:
-            error_code = e.response.get('error', 'unknown') if hasattr(e.response, 'get') else 'unknown'
+            error_code = self._extract_error_code(e)
             logger.error("Failed to post loading message: %s - %s", error_code, e)
             return None
     
