@@ -41,4 +41,4 @@ class LoadingMessageProvider:
         Returns:
             Number of loading messages available.
         """
-        return len(self._messages) 
+        return len(self._messages)
