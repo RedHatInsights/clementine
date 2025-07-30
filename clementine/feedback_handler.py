@@ -90,7 +90,7 @@ class FeedbackHandler:
                     "blocks": error_blocks,
                     "text": message.get("text", "")
                 })
-            except:
+            except Exception:
                 logger.error("Could not show error message to user")
 
     def handle_feedback_button(self, interaction_payload: Dict) -> None:
