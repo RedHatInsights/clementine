@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from slack_sdk.errors import SlackApiError
 from slack_sdk.web.client import WebClient
 
+from .loading_message_provider import LoadingMessageProvider
+
 logger = logging.getLogger(__name__)
 
 
@@ -71,9 +73,9 @@ class SlackEvent:
 class SlackClient:
     """Wrapper for Slack operations with better error handling."""
     
-    def __init__(self, client: WebClient, loading_text: str = ":hourglass_flowing_sand: Thinking..."):
+    def __init__(self, client: WebClient, loading_message_provider: LoadingMessageProvider = None):
         self.client = client
-        self.loading_text = loading_text
+        self.loading_message_provider = loading_message_provider or LoadingMessageProvider()
     
     def _extract_error_code(self, slack_error: SlackApiError) -> str:
         """Extract error code from SlackApiError safely."""
@@ -82,9 +84,10 @@ class SlackClient:
     def post_loading_message(self, channel: str, thread_ts: str) -> Optional[str]:
         """Post loading message and return timestamp."""
         try:
+            loading_message = self.loading_message_provider.get_random_message()
             response = self.client.chat_postMessage(
                 channel=channel,
-                text=self.loading_text,
+                text=loading_message,
                 thread_ts=thread_ts
             )
             return response["ts"]
