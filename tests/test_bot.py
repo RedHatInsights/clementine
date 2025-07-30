@@ -50,7 +50,7 @@ class TestClementineBot:
         mock_tangerine.chat.assert_called_once_with(
             assistants=["assistant1"],
             query="Hello bot",
-            session_id="U123",
+            session_id="3633d458-1895-5c08-b084-8bb88ec12247",
             client_name="TestBot",
             prompt="Be helpful"
         )
