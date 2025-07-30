@@ -26,4 +26,4 @@ LOADING_MESSAGES = [
     "🍊 Squeezing some fresh insights for you...",
     "🎲 Rolling the dice on this search...",
     "🌈 Following the rainbow to your answer..."
-] 
+]
