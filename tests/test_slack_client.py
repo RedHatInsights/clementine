@@ -4,6 +4,7 @@ from slack_sdk.errors import SlackApiError
 from slack_sdk.web.client import WebClient
 
 from clementine.slack_client import SlackEvent, SlackClient
+from clementine.loading_message_provider import LoadingMessageProvider
 
 
 class TestSlackEvent:
@@ -174,30 +175,55 @@ class TestSlackClient:
         mock_web_client = Mock(spec=WebClient)
         mock_web_client.chat_postMessage.return_value = {"ts": "1234567890.123"}
         
-        slack_client = SlackClient(mock_web_client)
+        # Mock the loading message provider to return a predictable message
+        mock_provider = Mock(spec=LoadingMessageProvider)
+        mock_provider.get_random_message.return_value = "🔍 Test loading message..."
+        
+        slack_client = SlackClient(mock_web_client, mock_provider)
         
         result = slack_client.post_loading_message("C123", "1234567890.100")
         
         assert result == "1234567890.123"
+        mock_provider.get_random_message.assert_called_once()
         mock_web_client.chat_postMessage.assert_called_once_with(
             channel="C123",
-            text=":hourglass_flowing_sand: Thinking...",
+            text="🔍 Test loading message...",
             thread_ts="1234567890.100"
         )
     
-    def test_post_loading_message_custom_text(self):
-        """Test loading message with custom text."""
+    def test_post_loading_message_custom_provider(self):
+        """Test loading message with custom message provider."""
         mock_web_client = Mock(spec=WebClient)
         mock_web_client.chat_postMessage.return_value = {"ts": "1234567890.123"}
         
-        slack_client = SlackClient(mock_web_client, loading_text="Processing...")
+        # Create custom provider with specific messages
+        custom_provider = LoadingMessageProvider(["⚙️ Processing your request..."])
+        slack_client = SlackClient(mock_web_client, custom_provider)
+        
         slack_client.post_loading_message("C123", "1234567890.100")
         
         mock_web_client.chat_postMessage.assert_called_once_with(
             channel="C123",
-            text="Processing...",
+            text="⚙️ Processing your request...",
             thread_ts="1234567890.100"
         )
+    
+    def test_post_loading_message_default_provider(self):
+        """Test loading message with default provider when none specified."""
+        mock_web_client = Mock(spec=WebClient)
+        mock_web_client.chat_postMessage.return_value = {"ts": "1234567890.123"}
+        
+        slack_client = SlackClient(mock_web_client)
+        result = slack_client.post_loading_message("C123", "1234567890.100")
+        
+        assert result == "1234567890.123"
+        # Should call postMessage with some message (we don't care which random one)
+        mock_web_client.chat_postMessage.assert_called_once()
+        call_args = mock_web_client.chat_postMessage.call_args
+        assert call_args[1]["channel"] == "C123"
+        assert call_args[1]["thread_ts"] == "1234567890.100"
+        assert isinstance(call_args[1]["text"], str)
+        assert len(call_args[1]["text"]) > 0
     
     def test_post_loading_message_slack_error(self):
         """Test handling of Slack API errors."""
