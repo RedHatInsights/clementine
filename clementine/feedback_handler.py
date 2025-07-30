@@ -117,7 +117,7 @@ class FeedbackHandler:
             try:
                 feedback_interaction = self._parse_interaction(interaction_payload)
                 self._show_feedback_response(feedback_interaction, is_success=False)
-            except:
+            except Exception:
                 logger.error("Could not show error message to user due to malformed interaction")
     
     def _parse_interaction(self, interaction_payload: Dict) -> FeedbackInteraction:
