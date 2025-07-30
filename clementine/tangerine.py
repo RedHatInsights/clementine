@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 # Project-specific namespace UUID for generating deterministic session IDs
 # This UUID was generated specifically for the Clementine project to ensure uniqueness
 # and avoid potential collisions with other systems.
-CLEMENTINE_NAMESPACE = uuid.UUID('12345678-1234-5678-1234-567812345678')  # Replace with an actual UUID
+CLEMENTINE_NAMESPACE = uuid.UUID('3f2504e0-4f89-11d3-9a0c-0305e82c3301')  # Unique UUID for the Clementine project
 
 
 def generate_session_id(channel: str, thread_ts: str) -> str:
