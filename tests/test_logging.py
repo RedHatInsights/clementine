@@ -5,7 +5,7 @@ import os
 from unittest.mock import Mock, patch, MagicMock
 from io import StringIO
 
-from logging_config import LogLevel, LogHandlerFactory, NoiseReducer, LoggingConfigurator
+from clementine.config.logging import LogLevel, LogHandlerFactory, NoiseReducer, LoggingConfigurator
 
 
 class TestLogLevel:

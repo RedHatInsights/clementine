@@ -2,7 +2,8 @@ from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 import os
 from dotenv import load_dotenv
-from logging_config import LoggingConfigurator
+
+from clementine.config.logging import LoggingConfigurator
 from clementine import TangerineClient, ClementineBot, SlackClient
 
 load_dotenv()
