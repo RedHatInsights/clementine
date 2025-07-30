@@ -101,7 +101,7 @@ class SlackClient:
             )
             return response["ts"]
         except SlackApiError as e:
-            error_code = getattr(e.response, 'get', lambda x, default: 'unknown')('error', 'unknown')
+            error_code = e.response.get('error', 'unknown') if hasattr(e.response, 'get') else 'unknown'
             logger.error("Failed to post loading message: %s - %s", error_code, e)
             return None
     
