@@ -125,6 +125,45 @@ class TestSlackEvent:
         
         with pytest.raises(ValueError, match="Event text cannot be empty after removing bot mention"):
             SlackEvent.from_dict(event_dict)
+    
+    def test_strips_enterprise_user_mention(self):
+        """Test that Enterprise user mentions (W prefix) are stripped."""
+        event_dict = {
+            "text": "<@W098PF40S1E> what is enterprise slack?",
+            "user": "U123456",
+            "channel": "C789012",
+            "ts": "1234567890.123"
+        }
+        
+        event = SlackEvent.from_dict(event_dict)
+        
+        assert event.text == "what is enterprise slack?"
+    
+    def test_strips_user_mention_with_underscores_and_hyphens(self):
+        """Test that user mentions with underscores and hyphens are stripped."""
+        event_dict = {
+            "text": "<@U098_PF-40S1E> what is tekton?",
+            "user": "U123456",
+            "channel": "C789012",
+            "ts": "1234567890.123"
+        }
+        
+        event = SlackEvent.from_dict(event_dict)
+        
+        assert event.text == "what is tekton?"
+    
+    def test_mixed_case_user_id_stripped(self):
+        """Test that user mentions with mixed case characters are stripped."""
+        event_dict = {
+            "text": "<@U098pF40s1E> what is tekton?",
+            "user": "U123456",
+            "channel": "C789012",
+            "ts": "1234567890.123"
+        }
+        
+        event = SlackEvent.from_dict(event_dict)
+        
+        assert event.text == "what is tekton?"
 
 
 class TestSlackClient:

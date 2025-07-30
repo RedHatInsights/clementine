@@ -62,8 +62,9 @@ class SlackEvent:
             "what is tekton?" -> "what is tekton?"
         """
         # Pattern to match Slack user mentions at the start of text
-        # <@U followed by alphanumeric characters, then >
-        mention_pattern = r'^<@U[A-Za-z0-9]+>\s*'
+        # <@U or <@W followed by alphanumeric characters, underscores, or hyphens, then >
+        # Slack user IDs can start with U (regular users) or W (Enterprise users)
+        mention_pattern = r'^<@[UW][A-Za-z0-9_-]+>\s*'
         return re.sub(mention_pattern, '', text).strip()
 
 
