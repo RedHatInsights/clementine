@@ -173,7 +173,7 @@ class TangerineClient:
         except requests.exceptions.HTTPError as e:
             logger.error("Tangerine API returned HTTP error %d: %s", e.response.status_code, e)
             raise
-        except requests.exceptions.JSONDecodeError:
+        except json.JSONDecodeError:
             logger.error("Tangerine API returned invalid JSON response")
             raise
         except Exception as e:
