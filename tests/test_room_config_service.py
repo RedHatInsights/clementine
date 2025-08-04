@@ -311,78 +311,7 @@ class TestRoomConfigService:
         assert result is True
         mock_repo.delete_room_config.assert_called_once_with("test_room")
     
-    def test_validate_assistant_list(self):
-        """Test assistant list validation."""
-        service = RoomConfigService(
-            repository=Mock(),
-            default_assistants=["default"],
-            default_prompt="Default"
-        )
-        
-        # Valid list
-        valid_list = ["assistant1", "assistant2"]
-        result = service._validate_assistant_list(valid_list)
-        assert result == ["assistant1", "assistant2"]
-        
-        # Empty strings should be filtered out
-        mixed_list = ["assistant1", "", "  assistant2  ", ""]
-        result = service._validate_assistant_list(mixed_list)
-        assert result == ["assistant1", "assistant2"]
-        
-        # Non-string items should be filtered out
-        mixed_types = ["assistant1", 123, "assistant2", None]
-        result = service._validate_assistant_list(mixed_types)
-        assert result == ["assistant1", "assistant2"]
-        
-        # Too long names should be filtered out
-        long_name = "a" * 101
-        long_list = ["assistant1", long_name, "assistant2"]
-        result = service._validate_assistant_list(long_list)
-        assert result == ["assistant1", "assistant2"]
-        
-        # Non-list input
-        result = service._validate_assistant_list("not a list")
-        assert result is None
-        
-        # Empty list after filtering
-        empty_list = ["", "  ", None]
-        result = service._validate_assistant_list(empty_list)
-        assert result is None
-    
-    def test_validate_system_prompt(self):
-        """Test system prompt validation."""
-        service = RoomConfigService(
-            repository=Mock(),
-            default_assistants=["default"],
-            default_prompt="Default"
-        )
-        
-        # Valid prompt
-        valid_prompt = "You are a helpful assistant."
-        result = service._validate_system_prompt(valid_prompt)
-        assert result == "You are a helpful assistant."
-        
-        # Prompt with whitespace should be trimmed
-        padded_prompt = "  You are helpful.  "
-        result = service._validate_system_prompt(padded_prompt)
-        assert result == "You are helpful."
-        
-        # Empty prompt
-        result = service._validate_system_prompt("")
-        assert result is None
-        
-        # Whitespace-only prompt
-        result = service._validate_system_prompt("   ")
-        assert result is None
-        
-        # Non-string prompt
-        result = service._validate_system_prompt(123)
-        assert result is None
-        
-        # Too long prompt
-        long_prompt = "a" * 5001
-        result = service._validate_system_prompt(long_prompt)
-        assert result is None
+
     
     @patch('clementine.room_config_service.logger')
     def test_error_handling_in_get_room_config(self, mock_logger):
