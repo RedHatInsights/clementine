@@ -10,3 +10,5 @@ htmlcov/
 # Environment files
 .env
 .env.local
+
+room_configs.db
