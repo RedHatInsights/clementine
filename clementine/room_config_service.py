@@ -36,7 +36,11 @@ class ProcessedRoomConfig:
                 logger.warning("Failed to parse assistant list for room %s: %s, using defaults", config.room_id, e)
         
         # Use custom prompt or default
-        prompt = config.system_prompt.strip() if isinstance(config.system_prompt, str) and config.system_prompt else default_prompt
+        prompt = default_prompt
+        if config.system_prompt is not None and isinstance(config.system_prompt, str):
+            stripped_prompt = config.system_prompt.strip()
+            if stripped_prompt:
+                prompt = stripped_prompt
         if not prompt:
             prompt = default_prompt
             logger.warning("Empty system prompt for room %s, using default", config.room_id)
