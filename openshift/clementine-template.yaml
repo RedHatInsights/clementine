@@ -1,0 +1,339 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: clementine-slack-bot
+  annotations:
+    description: "Clementine Slack Bot - Simple deployment template"
+    tags: "slack,bot,ai,python"
+    openshift.io/display-name: "Clementine Slack Bot"
+labels:
+  app: clementine-slack-bot
+
+objects:
+# ==========================================
+# ConfigMap for non-sensitive configuration
+# ==========================================
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: ${APP_NAME}-config
+    labels:
+      app: ${APP_NAME}
+  data:
+    log-level: ${LOG_LEVEL}
+    bot-name: ${BOT_NAME}
+    assistant-list: ${ASSISTANT_LIST}
+    default-prompt: ${DEFAULT_PROMPT}
+    tangerine-api-timeout: ${TANGERINE_API_TIMEOUT}
+    ai-disclosure-enabled: ${AI_DISCLOSURE_ENABLED}
+    ai-disclosure-text: ${AI_DISCLOSURE_TEXT}
+    feedback-enabled: ${FEEDBACK_ENABLED}
+
+# ==========================================
+# PersistentVolumeClaim for app data
+# ==========================================
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: ${APP_NAME}-data
+    labels:
+      app: ${APP_NAME}
+  spec:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: ${DATA_STORAGE_SIZE}
+
+# ==========================================
+# Service for health checks
+# ==========================================
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: ${APP_NAME}
+    labels:
+      app: ${APP_NAME}
+  spec:
+    ports:
+    - name: health
+      port: 8080
+      targetPort: 8080
+    selector:
+      app: ${APP_NAME}
+    type: ClusterIP
+
+# ==========================================
+# Deployment
+# ==========================================
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: ${APP_NAME}
+    labels:
+      app: ${APP_NAME}
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: ${APP_NAME}
+    template:
+      metadata:
+        labels:
+          app: ${APP_NAME}
+      spec:
+        # Security context
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          runAsGroup: 1001
+          fsGroup: 1001
+        
+        containers:
+        - name: clementine-bot
+          image: ${IMAGE_REGISTRY}/${NAMESPACE}/${APP_NAME}:${IMAGE_TAG}
+          
+          # Security context
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1001
+            capabilities:
+              drop:
+                - ALL
+          
+          # Resource limits
+          resources:
+            requests:
+              memory: ${MEMORY_REQUEST}
+              cpu: ${CPU_REQUEST}
+            limits:
+              memory: ${MEMORY_LIMIT}
+              cpu: ${CPU_LIMIT}
+          
+          # Environment variables
+          env:
+          # Sensitive variables from template parameters
+          - name: SLACK_BOT_TOKEN
+            value: ${SLACK_BOT_TOKEN}
+          - name: SLACK_SIGNING_SECRET
+            value: ${SLACK_SIGNING_SECRET}
+          - name: SLACK_APP_TOKEN
+            value: ${SLACK_APP_TOKEN}
+          - name: TANGERINE_API_URL
+            value: ${TANGERINE_API_URL}
+          - name: TANGERINE_API_TOKEN
+            value: ${TANGERINE_API_TOKEN}
+          
+          # Non-sensitive variables from ConfigMap
+          - name: LOG_LEVEL
+            valueFrom:
+              configMapKeyRef:
+                name: ${APP_NAME}-config
+                key: log-level
+          - name: BOT_NAME
+            valueFrom:
+              configMapKeyRef:
+                name: ${APP_NAME}-config
+                key: bot-name
+          - name: ASSISTANT_LIST
+            valueFrom:
+              configMapKeyRef:
+                name: ${APP_NAME}-config
+                key: assistant-list
+          - name: DEFAULT_PROMPT
+            valueFrom:
+              configMapKeyRef:
+                name: ${APP_NAME}-config
+                key: default-prompt
+          - name: TANGERINE_API_TIMEOUT
+            valueFrom:
+              configMapKeyRef:
+                name: ${APP_NAME}-config
+                key: tangerine-api-timeout
+          - name: AI_DISCLOSURE_ENABLED
+            valueFrom:
+              configMapKeyRef:
+                name: ${APP_NAME}-config
+                key: ai-disclosure-enabled
+          - name: AI_DISCLOSURE_TEXT
+            valueFrom:
+              configMapKeyRef:
+                name: ${APP_NAME}-config
+                key: ai-disclosure-text
+          - name: FEEDBACK_ENABLED
+            valueFrom:
+              configMapKeyRef:
+                name: ${APP_NAME}-config
+                key: feedback-enabled
+          
+          # Volume mounts
+          volumeMounts:
+          - name: data-storage
+            mountPath: /app/data
+          
+          # Health checks
+          livenessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - "pgrep -f 'python.*app.py' || exit 1"
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          
+          readinessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - "pgrep -f 'python.*app.py'"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+        
+        # Volumes
+        volumes:
+        - name: data-storage
+          persistentVolumeClaim:
+            claimName: ${APP_NAME}-data
+
+# ==========================================
+# Template Parameters
+# ==========================================
+parameters:
+# Application Configuration
+- name: APP_NAME
+  displayName: "Application Name"
+  description: "Name of the application"
+  value: "clementine-slack-bot"
+  required: true
+
+- name: NAMESPACE
+  displayName: "Namespace"
+  description: "OpenShift namespace/project name"
+  required: true
+
+# Image Configuration
+- name: IMAGE_REGISTRY
+  displayName: "Image Registry"
+  description: "Container image registry"
+  value: "image-registry.openshift-image-registry.svc:5000"
+  required: true
+
+- name: IMAGE_TAG
+  displayName: "Image Tag"
+  description: "Container image tag"
+  value: "latest"
+  required: true
+
+# Slack Configuration (Will be filled by vault)
+- name: SLACK_BOT_TOKEN
+  displayName: "Slack Bot Token"
+  description: "Slack bot token (xoxb-...)"
+  required: true
+
+- name: SLACK_SIGNING_SECRET
+  displayName: "Slack Signing Secret"
+  description: "Slack signing secret for request verification"
+  required: true
+
+- name: SLACK_APP_TOKEN
+  displayName: "Slack App Token"
+  description: "Slack app token for Socket Mode (xapp-...)"
+  required: true
+
+# Tangerine API Configuration (Will be filled by vault)
+- name: TANGERINE_API_URL
+  displayName: "Tangerine API URL"
+  description: "Base URL for the Tangerine API"
+  required: true
+
+- name: TANGERINE_API_TOKEN
+  displayName: "Tangerine API Token"
+  description: "Authentication token for Tangerine API"
+  required: true
+
+# Bot Configuration
+- name: BOT_NAME
+  displayName: "Bot Name"
+  description: "Display name for the bot"
+  value: "Clementine"
+  required: true
+
+- name: ASSISTANT_LIST
+  displayName: "Assistant List"
+  description: "Comma-separated list of available assistants"
+  value: "konflux"
+  required: true
+
+- name: DEFAULT_PROMPT
+  displayName: "Default Prompt"
+  description: "Default prompt for the AI assistant"
+  value: "You are a helpful assistant."
+  required: true
+
+- name: LOG_LEVEL
+  displayName: "Log Level"
+  description: "Application log level"
+  value: "INFO"
+  required: true
+
+- name: TANGERINE_API_TIMEOUT
+  displayName: "API Timeout"
+  description: "Timeout for Tangerine API requests (seconds)"
+  value: "500"
+  required: true
+
+- name: AI_DISCLOSURE_ENABLED
+  displayName: "AI Disclosure Enabled"
+  description: "Enable AI disclosure messages"
+  value: "true"
+  required: true
+
+- name: AI_DISCLOSURE_TEXT
+  displayName: "AI Disclosure Text"
+  description: "Text for AI disclosure messages"
+  value: "This response was generated by AI. Please verify important information."
+  required: true
+
+- name: FEEDBACK_ENABLED
+  displayName: "Feedback Enabled"
+  description: "Enable user feedback functionality"
+  value: "true"
+  required: true
+
+# Resource Configuration
+- name: CPU_REQUEST
+  displayName: "CPU Request"
+  description: "CPU resource request"
+  value: "100m"
+  required: true
+
+- name: CPU_LIMIT
+  displayName: "CPU Limit"
+  description: "CPU resource limit"
+  value: "500m"
+  required: true
+
+- name: MEMORY_REQUEST
+  displayName: "Memory Request"
+  description: "Memory resource request"
+  value: "256Mi"
+  required: true
+
+- name: MEMORY_LIMIT
+  displayName: "Memory Limit"
+  description: "Memory resource limit"
+  value: "512Mi"
+  required: true
+
+# Storage Configuration
+- name: DATA_STORAGE_SIZE
+  displayName: "Data Storage Size"
+  description: "Size of persistent volume for data"
+  value: "1Gi"
+  required: true 
