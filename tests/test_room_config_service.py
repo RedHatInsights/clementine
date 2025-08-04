@@ -142,8 +142,9 @@ class TestRoomConfigService:
         assert saved_config.system_prompt == "Custom prompt"
     
     def test_save_room_config_with_invalid_assistant_list(self):
-        """Test saving room config with invalid assistant list."""
+        """Test saving room config with invalid assistant list but valid prompt."""
         mock_repo = Mock()
+        mock_repo.save_room_config.return_value = True
         
         service = RoomConfigService(
             repository=mock_repo,
@@ -151,15 +152,22 @@ class TestRoomConfigService:
             default_prompt="Default"
         )
         
-        # Test with non-list input
+        # Test with invalid assistant list but valid prompt
+        # Should ignore invalid assistant list and save valid prompt
         result = service.save_room_config(
             room_id="test_room",
             assistant_list="not a list",
             system_prompt="Valid prompt"
         )
         
-        assert result is False
-        mock_repo.save_room_config.assert_not_called()
+        assert result is True
+        mock_repo.save_room_config.assert_called_once()
+        
+        # Verify saved config has None for assistant_list but valid prompt
+        saved_config = mock_repo.save_room_config.call_args[0][0]
+        assert saved_config.room_id == "test_room"
+        assert saved_config.assistant_list is None  # Invalid list ignored
+        assert saved_config.system_prompt == "Valid prompt"  # Valid prompt saved
     
     def test_save_room_config_with_empty_values(self):
         """Test saving room config with empty/None values."""
@@ -175,6 +183,26 @@ class TestRoomConfigService:
             room_id="test_room",
             assistant_list=None,
             system_prompt=None
+        )
+        
+        assert result is False
+        mock_repo.save_room_config.assert_not_called()
+    
+    def test_save_room_config_with_only_invalid_data(self):
+        """Test saving room config with only invalid data."""
+        mock_repo = Mock()
+        
+        service = RoomConfigService(
+            repository=mock_repo,
+            default_assistants=["default"],
+            default_prompt="Default"
+        )
+        
+        # Test with invalid assistant list AND invalid prompt
+        result = service.save_room_config(
+            room_id="test_room",
+            assistant_list="not a list",
+            system_prompt=""  # Empty prompt is invalid
         )
         
         assert result is False
