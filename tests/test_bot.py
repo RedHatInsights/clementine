@@ -142,4 +142,106 @@ class TestClementineBot:
         
         # Should not proceed with any operations
         mock_slack_client.post_loading_message.assert_not_called()
-        mock_tangerine.chat.assert_not_called() 
+        mock_tangerine.chat.assert_not_called()
+    
+    def test_handle_mention_with_room_config_service(self):
+        """Test mention handling with room configuration service."""
+        from clementine.room_config_service import ProcessedRoomConfig
+        
+        # Setup mocks
+        mock_tangerine = Mock()
+        mock_tangerine.chat.return_value = TangerineResponse(
+            text="Custom response",
+            metadata=[],
+            interaction_id="test-interaction-123"
+        )
+        
+        mock_slack_client = Mock()
+        mock_slack_client.post_loading_message.return_value = "1234567890.123"
+        mock_slack_client.update_message.return_value = True
+        
+        mock_room_config_service = Mock()
+        mock_room_config_service.get_room_config.return_value = ProcessedRoomConfig(
+            room_id="C456",
+            assistant_list=["custom_assistant"],
+            system_prompt="Custom prompt"
+        )
+        
+        mock_web_client = Mock(spec=WebClient)
+        
+        # Create bot with room config service
+        bot = ClementineBot(
+            tangerine_client=mock_tangerine,
+            slack_client=mock_slack_client,
+            bot_name="TestBot",
+            assistant_list=["default_assistant"],
+            default_prompt="Default prompt",
+            room_config_service=mock_room_config_service
+        )
+        
+        # Test event
+        event_dict = {
+            "text": "Hello bot",
+            "user": "U123",
+            "channel": "C456",
+            "ts": "1234567890.100"
+        }
+        
+        # Execute
+        bot.handle_mention(event_dict, mock_web_client)
+        
+        # Verify room config was used
+        mock_room_config_service.get_room_config.assert_called_once_with("C456")
+        mock_tangerine.chat.assert_called_once_with(
+            assistants=["custom_assistant"],  # Should use room config
+            query="Hello bot",
+            session_id="8b8c5078-cc93-58a8-bf7f-62176b6c16b2",
+            client_name="TestBot",
+            prompt="Custom prompt"  # Should use room config
+        )
+    
+    def test_handle_mention_without_room_config_service(self):
+        """Test mention handling without room configuration service (legacy mode)."""
+        # Setup mocks
+        mock_tangerine = Mock()
+        mock_tangerine.chat.return_value = TangerineResponse(
+            text="Default response",
+            metadata=[],
+            interaction_id="test-interaction-123"
+        )
+        
+        mock_slack_client = Mock()
+        mock_slack_client.post_loading_message.return_value = "1234567890.123"
+        mock_slack_client.update_message.return_value = True
+        
+        mock_web_client = Mock(spec=WebClient)
+        
+        # Create bot without room config service
+        bot = ClementineBot(
+            tangerine_client=mock_tangerine,
+            slack_client=mock_slack_client,
+            bot_name="TestBot",
+            assistant_list=["default_assistant"],
+            default_prompt="Default prompt",
+            room_config_service=None
+        )
+        
+        # Test event
+        event_dict = {
+            "text": "Hello bot",
+            "user": "U123",
+            "channel": "C456",
+            "ts": "1234567890.100"
+        }
+        
+        # Execute
+        bot.handle_mention(event_dict, mock_web_client)
+        
+        # Verify default config was used
+        mock_tangerine.chat.assert_called_once_with(
+            assistants=["default_assistant"],  # Should use defaults
+            query="Hello bot",
+            session_id="8b8c5078-cc93-58a8-bf7f-62176b6c16b2",
+            client_name="TestBot",
+            prompt="Default prompt"  # Should use defaults
+        ) 

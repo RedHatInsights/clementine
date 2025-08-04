@@ -8,6 +8,7 @@ from .slack_client import SlackClient, SlackEvent
 from .tangerine import TangerineClient, generate_session_id
 from .formatters import MessageFormatter, BlockKitFormatter, ResponseFormatter
 from .error_handling import ErrorHandler
+from .room_config_service import RoomConfigService
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,7 @@ class ClementineBot:
     
     def __init__(self, tangerine_client: TangerineClient, slack_client: SlackClient,
                  bot_name: str, assistant_list: list[str], default_prompt: str,
-                 formatter: ResponseFormatter | None = None):
+                 formatter: ResponseFormatter | None = None, room_config_service: RoomConfigService | None = None):
         self.tangerine_client = tangerine_client
         self.slack_client = slack_client
         self.bot_name = bot_name
@@ -25,6 +26,7 @@ class ClementineBot:
         self.default_prompt = default_prompt
         self.formatter = formatter or MessageFormatter()
         self.error_handler = ErrorHandler(bot_name)
+        self.room_config_service = room_config_service
     
     def handle_mention(self, event_dict: Dict, slack_web_client: WebClient) -> None:
         """Handle mention by orchestrating the response flow."""
@@ -59,15 +61,26 @@ class ClementineBot:
         return self.slack_client.post_loading_message(event.channel, event.thread_ts)
     
     def _get_tangerine_response(self, event: SlackEvent):
-        """Get response from Tangerine API."""
+        """Get response from Tangerine API with room-specific configuration."""
+        # Get room-specific configuration or fallback to defaults
+        if self.room_config_service:
+            room_config = self.room_config_service.get_room_config(event.room_id)
+            assistants = room_config.assistant_list
+            prompt = room_config.system_prompt
+            logger.debug("Using room config for %s: assistants=%s", event.room_id, assistants)
+        else:
+            assistants = self.assistant_list
+            prompt = self.default_prompt
+            logger.debug("Using default config: assistants=%s", assistants)
+        
         # Create deterministic UUID session ID from channel and thread
         session_id = generate_session_id(event.channel, event.thread_ts)
         return self.tangerine_client.chat(
-            assistants=self.assistant_list,
+            assistants=assistants,
             query=event.text,
             session_id=session_id,
             client_name=self.bot_name,
-            prompt=self.default_prompt
+            prompt=prompt
         )
     
     def _update_message(self, event: SlackEvent, loading_ts: str, formatted_message: Union[str, Dict]) -> None:
