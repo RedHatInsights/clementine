@@ -2,6 +2,7 @@ from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 import os
 import logging
+import json
 from dotenv import load_dotenv
 
 from clementine.config.logging import LoggingConfigurator
@@ -247,7 +248,6 @@ def handle_config_modal_submission(ack, body, client):
         if response.get("response_action") == "clear":
             # Extract room info for confirmation
             private_metadata = body["view"]["private_metadata"]
-            import json
             metadata = json.loads(private_metadata)
             room_id = metadata["room_id"]
             
