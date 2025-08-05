@@ -1,3 +1,4 @@
+
 """Configuration modal handler for Slack BlockKit interactions."""
 
 import logging
@@ -6,6 +7,7 @@ from typing import Dict, Any, Optional, List
 
 from .room_config_service import RoomConfigService
 from .slack_client import SlackClient
+from .tangerine import TangerineClient
 
 logger = logging.getLogger(__name__)
 
@@ -13,15 +15,19 @@ logger = logging.getLogger(__name__)
 class ConfigModalHandler:
     """Handles Slack modal interactions for room configuration."""
     
-    def __init__(self, room_config_service: RoomConfigService, slack_client: SlackClient):
+    def __init__(self, room_config_service: RoomConfigService, slack_client: SlackClient, tangerine_client: TangerineClient):
         self.room_config_service = room_config_service
         self.slack_client = slack_client
+        self.tangerine_client = tangerine_client
     
     def create_config_modal(self, room_id: str, trigger_id: str) -> bool:
         """Create and show configuration modal for a room."""
         try:
+            logger.debug("Creating config modal for room %s", room_id)
             current_config = self.room_config_service.get_current_config_for_display(room_id)
+            logger.debug("Got current config: %s", current_config)
             modal_blocks = self._build_modal_blocks(current_config)
+            logger.debug("Built modal blocks, count: %d", len(modal_blocks))
             
             modal_view = {
                 "type": "modal",
@@ -116,11 +122,28 @@ class ConfigModalHandler:
         })
         
         # Assistant list configuration
+        assistant_options = self._fetch_assistant_options()
+        
+        # Find currently selected assistants that exist in available options
+        current_assistants = config["assistant_list"]
+        initial_options = []
+        available_assistant_names = {option["value"] for option in assistant_options}
+        
+        for assistant_name in current_assistants:
+            # Only include if the assistant exists in available options
+            if assistant_name in available_assistant_names:
+                for option in assistant_options:
+                    if option["value"] == assistant_name:
+                        initial_options.append(option)
+                        break
+            else:
+                logger.warning("Assistant '%s' not found in available options, skipping from initial selection", assistant_name)
+        
         blocks.append({
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": "*Assistant List*\nEnter assistants as a comma-separated list (e.g., `konflux, assistant2, assistant3`)"
+                "text": "*Assistant List*\nSelect one or more assistants to use in this room"
             }
         })
         
@@ -128,13 +151,14 @@ class ConfigModalHandler:
             "type": "input",
             "block_id": "assistant_list_block",
             "element": {
-                "type": "plain_text_input",
-                "action_id": "assistant_list_input",
+                "type": "multi_static_select",
+                "action_id": "assistant_list_select",
                 "placeholder": {
                     "type": "plain_text",
-                    "text": "konflux, assistant2, assistant3"
+                    "text": "Select assistants..."
                 },
-                "initial_value": ", ".join(config["assistant_list"])
+                "options": assistant_options,
+                "initial_options": initial_options
             },
             "label": {
                 "type": "plain_text",
@@ -201,17 +225,53 @@ class ConfigModalHandler:
         
         return blocks
     
+    def _fetch_assistant_options(self) -> List[Dict[str, Any]]:
+        """Fetch assistants from API and format them as Slack select options."""
+        try:
+            logger.debug("Fetching assistants from API for modal options")
+            assistants = self.tangerine_client.fetch_assistants()
+            logger.debug("Fetched %d assistants from API", len(assistants))
+            options = []
+            for assistant in assistants:
+                # Create option object for Slack multi-select using just the name
+                assistant_name = assistant.get('name', 'unknown')
+                option = {
+                    "text": {
+                        "type": "plain_text",
+                        "text": assistant_name
+                    },
+                    "value": assistant_name
+                }
+                options.append(option)
+                logger.debug("Added assistant option: %s", assistant_name)
+            logger.debug("Created %d assistant options for modal", len(options))
+            return options
+        except Exception as e:
+            logger.error("Failed to fetch assistants for modal: %s", e)
+            logger.exception("Full traceback:")
+            # Return fallback options if API call fails
+            logger.info("Using fallback assistant options")
+            return [
+                {
+                    "text": {
+                        "type": "plain_text",
+                        "text": "konflux"
+                    },
+                    "value": "konflux"
+                }
+            ]
+    
     def _extract_form_values(self, state_values: Dict[str, Any]) -> Dict[str, Any]:
         """Extract form values from modal state."""
         form_values = {}
         
-        # Extract assistant list
+        # Extract assistant list from multi-select
         assistant_block = state_values.get("assistant_list_block", {})
-        assistant_input = assistant_block.get("assistant_list_input", {})
-        assistant_value = assistant_input.get("value", "").strip()
-        if assistant_value:
-            # Parse comma-separated list
-            assistants = [a.strip() for a in assistant_value.split(",") if a.strip()]
+        assistant_select = assistant_block.get("assistant_list_select", {})
+        selected_options = assistant_select.get("selected_options", [])
+        if selected_options:
+            # Extract assistant names from selected options
+            assistants = [option["value"] for option in selected_options]
             form_values["assistant_list"] = assistants
         
         # Extract system prompt

@@ -115,7 +115,38 @@ class TestTangerineClient:
         client = TangerineClient("http://example.com/", "token")
         
         assert client.api_url == "http://example.com"
-        assert client.chat_endpoint == "http://example.com/api/assistants/chat" 
+        assert client.chat_endpoint == "http://example.com/api/assistants/chat"
+        assert client.assistants_endpoint == "http://example.com/api/assistants"
+    
+    def test_fetch_assistants_success(self):
+        """Test successful fetch assistants request."""
+        client = TangerineClient("http://api.example.com", "token123")
+        
+        # Mock the requests.get call
+        import requests
+        original_requests_get = requests.get
+        def mock_get(url, **kwargs):
+            mock_response = Mock()
+            mock_response.raise_for_status = Mock()
+            mock_response.json.return_value = {
+                "data": [
+                    {"id": 1, "name": "assistant1", "description": "First Assistant"},
+                    {"id": 2, "name": "assistant2", "description": "Second Assistant"}
+                ]
+            }
+            return mock_response
+        requests.get = mock_get
+        
+        try:
+            result = client.fetch_assistants()
+            
+            assert len(result) == 2
+            assert result[0]["name"] == "assistant1"
+            assert result[0]["description"] == "First Assistant"
+            assert result[1]["name"] == "assistant2"
+            assert result[1]["description"] == "Second Assistant"
+        finally:
+            requests.get = original_requests_get 
 
 
 class TestGenerateSessionId:
