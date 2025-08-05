@@ -125,7 +125,7 @@ room_config_service = RoomConfigService(
     default_assistants=ASSISTANT_LIST,
     default_prompt=DEFAULT_PROMPT
 )
-config_modal_handler = ConfigModalHandler(room_config_service, slack_client)
+config_modal_handler = ConfigModalHandler(room_config_service, slack_client, tangerine_client)
 
 # Initialize feedback components if enabled
 if FEEDBACK_ENABLED:

@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 import requests
 import uuid
 
@@ -115,7 +115,62 @@ class TestTangerineClient:
         client = TangerineClient("http://example.com/", "token")
         
         assert client.api_url == "http://example.com"
-        assert client.chat_endpoint == "http://example.com/api/assistants/chat" 
+        assert client.chat_endpoint == "http://example.com/api/assistants/chat"
+        assert client.assistants_endpoint == "http://example.com/api/assistants"
+    
+    @patch('requests.get')
+    def test_fetch_assistants_success(self, mock_get):
+        """Test successful fetch assistants request."""
+        # Setup mock response
+        mock_response = Mock()
+        mock_response.raise_for_status = Mock()
+        mock_response.json.return_value = {
+            "data": [
+                {"id": 1, "name": "assistant1", "description": "First Assistant"},
+                {"id": 2, "name": "assistant2", "description": "Second Assistant"}
+            ]
+        }
+        mock_get.return_value = mock_response
+        
+        client = TangerineClient("http://api.example.com", "token123")
+        result = client.fetch_assistants()
+        
+        # Verify the request was made correctly
+        mock_get.assert_called_once_with(
+            "http://api.example.com/api/assistants",
+            headers={
+                "Authorization": "Bearer token123",
+                "Content-Type": "application/json"
+            },
+            timeout=500
+        )
+        
+        # Verify the response parsing
+        assert len(result) == 2
+        assert result[0]["name"] == "assistant1"
+        assert result[0]["description"] == "First Assistant"
+        assert result[1]["name"] == "assistant2"
+        assert result[1]["description"] == "Second Assistant"
+    
+    @patch('requests.get')
+    def test_fetch_assistants_timeout(self, mock_get):
+        """Test fetch assistants with timeout error."""
+        mock_get.side_effect = requests.exceptions.Timeout()
+        
+        client = TangerineClient("http://api.example.com", "token123")
+        
+        with pytest.raises(requests.exceptions.Timeout):
+            client.fetch_assistants()
+    
+    @patch('requests.get')
+    def test_fetch_assistants_connection_error(self, mock_get):
+        """Test fetch assistants with connection error."""
+        mock_get.side_effect = requests.exceptions.ConnectionError()
+        
+        client = TangerineClient("http://api.example.com", "token123")
+        
+        with pytest.raises(requests.exceptions.ConnectionError):
+            client.fetch_assistants() 
 
 
 class TestGenerateSessionId:

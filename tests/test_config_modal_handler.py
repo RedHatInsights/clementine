@@ -24,7 +24,13 @@ class TestConfigModalHandler:
         mock_slack_client = Mock()
         mock_slack_client.client.views_open.return_value = {"ok": True}
         
-        handler = ConfigModalHandler(mock_service, mock_slack_client)
+        mock_tangerine_client = Mock()
+        mock_tangerine_client.fetch_assistants.return_value = [
+            {"id": 1, "name": "assistant1", "description": "Test Assistant 1"},
+            {"id": 2, "name": "assistant2", "description": "Test Assistant 2"}
+        ]
+        
+        handler = ConfigModalHandler(mock_service, mock_slack_client, mock_tangerine_client)
         
         result = handler.create_config_modal("test_room", "trigger123")
         
@@ -53,7 +59,10 @@ class TestConfigModalHandler:
         mock_slack_client = Mock()
         mock_slack_client.client.views_open.return_value = {"ok": False, "error": "permission_denied"}
         
-        handler = ConfigModalHandler(mock_service, mock_slack_client)
+        mock_tangerine_client = Mock()
+        mock_tangerine_client.fetch_assistants.return_value = []
+        
+        handler = ConfigModalHandler(mock_service, mock_slack_client, mock_tangerine_client)
         
         result = handler.create_config_modal("test_room", "trigger123")
         
@@ -66,7 +75,9 @@ class TestConfigModalHandler:
         
         mock_slack_client = Mock()
         
-        handler = ConfigModalHandler(mock_service, mock_slack_client)
+        mock_tangerine_client = Mock()
+        
+        handler = ConfigModalHandler(mock_service, mock_slack_client, mock_tangerine_client)
         
         result = handler.create_config_modal("test_room", "trigger123")
         
@@ -79,8 +90,9 @@ class TestConfigModalHandler:
         mock_service = Mock()
         mock_service.save_room_config.return_value = True
         mock_slack_client = Mock()
+        mock_tangerine_client = Mock()
         
-        handler = ConfigModalHandler(mock_service, mock_slack_client)
+        handler = ConfigModalHandler(mock_service, mock_slack_client, mock_tangerine_client)
         
         payload = {
             "view": {
@@ -88,8 +100,11 @@ class TestConfigModalHandler:
                 "state": {
                     "values": {
                         "assistant_list_block": {
-                            "assistant_list_input": {
-                                "value": "assistant1, assistant2"
+                            "assistant_list_select": {
+                                "selected_options": [
+                                    {"value": "assistant1", "text": {"type": "plain_text", "text": "assistant1"}},
+                                    {"value": "assistant2", "text": {"type": "plain_text", "text": "assistant2"}}
+                                ]
                             }
                         },
                         "system_prompt_block": {
@@ -110,8 +125,9 @@ class TestConfigModalHandler:
         """Test modal submission handling with validation errors."""
         mock_service = Mock()
         mock_slack_client = Mock()
+        mock_tangerine_client = Mock()
         
-        handler = ConfigModalHandler(mock_service, mock_slack_client)
+        handler = ConfigModalHandler(mock_service, mock_slack_client, mock_tangerine_client)
         
         payload = {
             "view": {
@@ -119,8 +135,8 @@ class TestConfigModalHandler:
                 "state": {
                     "values": {
                         "assistant_list_block": {
-                            "assistant_list_input": {
-                                "value": ""  # Empty value should cause error
+                            "assistant_list_select": {
+                                "selected_options": []  # Empty selection should cause error
                             }
                         }
                     }
@@ -137,8 +153,9 @@ class TestConfigModalHandler:
         """Test modal submission handling with exception."""
         mock_service = Mock()
         mock_slack_client = Mock()
+        mock_tangerine_client = Mock()
         
-        handler = ConfigModalHandler(mock_service, mock_slack_client)
+        handler = ConfigModalHandler(mock_service, mock_slack_client, mock_tangerine_client)
         
         # Invalid payload (missing required fields)
         payload = {

@@ -3,6 +3,7 @@
 import requests
 import uuid
 import logging
+import json
 from typing import Dict, List
 from dataclasses import dataclass
 
@@ -51,6 +52,7 @@ class TangerineClient:
         self.api_token = api_token
         self.timeout = timeout
         self.chat_endpoint = f"{self.api_url}/api/assistants/chat"
+        self.assistants_endpoint = f"{self.api_url}/api/assistants"
     
     def chat(self, assistants: List[str], query: str, session_id: str, 
              client_name: str, prompt: str) -> TangerineResponse:
@@ -64,6 +66,39 @@ class TangerineClient:
         # Extract interaction_id from the payload we sent
         interaction_id = payload["interactionId"]
         return TangerineResponse.from_dict(response_data, interaction_id)
+    
+    def fetch_assistants(self) -> List[Dict]:
+        """Fetch available assistants from the API."""
+        logger.debug("Fetching assistants from Tangerine API")
+        try:
+            response = requests.get(
+                self.assistants_endpoint,
+                headers={
+                    "Authorization": f"Bearer {self.api_token}",
+                    "Content-Type": "application/json"
+                },
+                timeout=self.timeout
+            )
+            response.raise_for_status()
+            data = response.json()
+            assistants = data.get("data", [])
+            logger.debug("Fetched %d assistants from API", len(assistants))
+            return assistants
+        except requests.exceptions.Timeout:
+            logger.error("Assistants API request timed out after %d seconds", self.timeout)
+            raise
+        except requests.exceptions.ConnectionError:
+            logger.error("Failed to connect to Assistants API at %s", self.assistants_endpoint)
+            raise
+        except requests.exceptions.HTTPError as e:
+            logger.error("Assistants API returned HTTP error %d: %s", e.response.status_code, e)
+            raise
+        except json.JSONDecodeError:
+            logger.error("Assistants API returned invalid JSON response")
+            raise
+        except Exception as e:
+            logger.error("Unexpected error calling Assistants API: %s", e)
+            raise
     
     def _build_payload(self, assistants: List[str], query: str, session_id: str, 
                       client_name: str, prompt: str) -> Dict:
@@ -101,7 +136,7 @@ class TangerineClient:
         except requests.exceptions.HTTPError as e:
             logger.error("Tangerine API returned HTTP error %d: %s", e.response.status_code, e)
             raise
-        except requests.exceptions.JSONDecodeError:
+        except json.JSONDecodeError:
             logger.error("Tangerine API returned invalid JSON response")
             raise
         except Exception as e:
