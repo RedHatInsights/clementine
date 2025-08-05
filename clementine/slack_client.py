@@ -19,6 +19,7 @@ class SlackEvent:
     user_id: str
     channel: str
     thread_ts: str
+    room_id: str  # For room-specific configuration
     
     @classmethod
     def from_dict(cls, event: dict) -> 'SlackEvent':
@@ -43,7 +44,8 @@ class SlackEvent:
             text=text,
             user_id=event["user"], 
             channel=event["channel"],
-            thread_ts=event.get("thread_ts", event["ts"])
+            thread_ts=event.get("thread_ts", event["ts"]),
+            room_id=event["channel"]  # Use channel as room_id for per-room configuration
         )
     
     @staticmethod

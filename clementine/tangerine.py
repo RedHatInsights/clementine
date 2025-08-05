@@ -56,7 +56,9 @@ class TangerineClient:
              client_name: str, prompt: str) -> TangerineResponse:
         """Send chat request and return structured response."""
         logger.debug("Sending chat request to Tangerine API for session %s", session_id)
+        logger.debug("Using prompt: %s", prompt[:100] + "..." if len(prompt) > 100 else prompt)
         payload = self._build_payload(assistants, query, session_id, client_name, prompt)
+        logger.debug("API payload: %s", {k: v if k != "prompt" else f"{v[:50]}..." if len(str(v)) > 50 else v for k, v in payload.items()})
         response_data = self._make_request(payload)
         logger.debug("Received response from Tangerine API")
         # Extract interaction_id from the payload we sent
