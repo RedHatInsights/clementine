@@ -3,6 +3,7 @@
 import requests
 import uuid
 import logging
+import json
 from typing import Dict, List
 from dataclasses import dataclass
 
@@ -92,7 +93,7 @@ class TangerineClient:
         except requests.exceptions.HTTPError as e:
             logger.error("Assistants API returned HTTP error %d: %s", e.response.status_code, e)
             raise
-        except requests.exceptions.JSONDecodeError:
+        except json.JSONDecodeError:
             logger.error("Assistants API returned invalid JSON response")
             raise
         except Exception as e:
@@ -135,7 +136,7 @@ class TangerineClient:
         except requests.exceptions.HTTPError as e:
             logger.error("Tangerine API returned HTTP error %d: %s", e.response.status_code, e)
             raise
-        except requests.exceptions.JSONDecodeError:
+        except json.JSONDecodeError:
             logger.error("Tangerine API returned invalid JSON response")
             raise
         except Exception as e:
