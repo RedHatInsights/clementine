@@ -67,11 +67,13 @@ class ClementineBot:
             room_config = self.room_config_service.get_room_config(event.room_id)
             assistants = room_config.assistant_list
             prompt = room_config.system_prompt
-            logger.debug("Using room config for %s: assistants=%s", event.room_id, assistants)
+            logger.debug("Using room config for %s: assistants=%s, prompt=%s", 
+                        event.room_id, assistants, prompt[:50] + "..." if len(prompt) > 50 else prompt)
         else:
             assistants = self.assistant_list
             prompt = self.default_prompt
-            logger.debug("Using default config: assistants=%s", assistants)
+            logger.debug("Using default config: assistants=%s, prompt=%s", 
+                        assistants, prompt[:50] + "..." if len(prompt) > 50 else prompt)
         
         # Create deterministic UUID session ID from channel and thread
         session_id = generate_session_id(event.channel, event.thread_ts)
