@@ -20,10 +20,12 @@ class ChunksRequest:
     session_id: str
     client_name: str
     assistant_name: str = "clowder"
+    system_prompt: str = None
+    user_prompt: str = None
     
     def to_payload(self) -> Dict:
         """Convert to API payload format."""
-        return {
+        payload = {
             "assistants": [self.assistant_name],
             "query": self.query,
             "sessionId": self.session_id,
@@ -33,6 +35,16 @@ class ChunksRequest:
             "chunks": self.chunks,
             "disable_agentic": True
         }
+        
+        # Add system prompt if provided
+        if self.system_prompt:
+            payload["system_prompt"] = self.system_prompt
+            
+        # Add user prompt if provided
+        if self.user_prompt:
+            payload["userPrompt"] = self.user_prompt
+            
+        return payload
 
 
 class AdvancedChatClient:

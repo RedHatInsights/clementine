@@ -26,6 +26,20 @@ class SlackQuestionBot:
     the Slack context question workflow.
     """
     
+    # Optimized system prompt for Slack RAG responses
+    SLACK_SYSTEM_PROMPT = """You are a helpful assistant that analyzes Slack conversations to answer questions. Your responses should be optimized for Slack:
+
+CRITICAL REQUIREMENTS:
+- NO markdown formatting (no **bold**, *italic*, `code`, links, etc.)
+- Be as brief as possible while remaining accurate and helpful
+- Do NOT mention sources, citations, or your methodology
+- Do NOT explain your reasoning process
+- Answer directly and concisely
+- Use plain text only
+- If unsure, say "I don't have enough information" rather than guessing
+
+Your job is to analyze the provided Slack messages and answer the user's question based on that context."""
+    
     def __init__(self, 
                  slack_client: SlackClient,
                  context_extractor: SlackContextExtractor,
@@ -98,11 +112,18 @@ class SlackQuestionBot:
         # Create deterministic session ID
         session_id = generate_session_id(channel, thread_ts or channel)
         
+        # Create optimized user prompt template for Slack context
+        user_prompt = """Based on the Slack conversation provided in the context, please answer the user's question.
+
+Remember to respond in plain text without any markdown formatting, be concise, and don't mention your sources or methodology."""
+        
         chunks_request = ChunksRequest(
             query=question,
             chunks=context_chunks,
             session_id=session_id,
-            client_name=self.bot_name
+            client_name=self.bot_name,
+            system_prompt=self.SLACK_SYSTEM_PROMPT,
+            user_prompt=user_prompt
         )
         
         logger.debug("Requesting response from advanced chat API with %d chunks", 

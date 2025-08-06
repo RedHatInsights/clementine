@@ -31,6 +31,8 @@ class TestChunksRequest:
         assert payload["client"] == "test-client"
         assert payload["stream"] is False
         assert payload["disable_agentic"] is True
+        assert "system_prompt" not in payload  # No system prompt provided
+        assert "userPrompt" not in payload  # No user prompt provided
         
         # Check that interactionId is a valid UUID
         assert UUID(payload["interactionId"])
@@ -48,6 +50,54 @@ class TestChunksRequest:
         payload = chunks_request.to_payload()
         
         assert payload["assistants"] == ["customAssistant"]
+    
+    def test_to_payload_with_system_prompt(self):
+        """Test converting request to API payload with system prompt."""
+        chunks_request = ChunksRequest(
+            query="Test question",
+            chunks=["chunk1"],
+            session_id="session-123",
+            client_name="test-client",
+            system_prompt="You are a helpful assistant."
+        )
+        
+        payload = chunks_request.to_payload()
+        
+        assert payload["system_prompt"] == "You are a helpful assistant."
+        assert payload["query"] == "Test question"
+    
+    def test_to_payload_with_user_prompt(self):
+        """Test converting request to API payload with user prompt."""
+        chunks_request = ChunksRequest(
+            query="Original question",
+            chunks=["chunk1"],
+            session_id="session-123",
+            client_name="test-client",
+            user_prompt="Enhanced instructions for processing"
+        )
+        
+        payload = chunks_request.to_payload()
+        
+        assert payload["query"] == "Original question"  # Query remains unchanged
+        assert payload["userPrompt"] == "Enhanced instructions for processing"
+        assert "system_prompt" not in payload  # No system prompt
+    
+    def test_to_payload_with_both_prompts(self):
+        """Test converting request to API payload with both system and user prompts."""
+        chunks_request = ChunksRequest(
+            query="Original question",
+            chunks=["chunk1"],
+            session_id="session-123",
+            client_name="test-client",
+            system_prompt="You are a helpful assistant.",
+            user_prompt="Enhanced instructions for processing"
+        )
+        
+        payload = chunks_request.to_payload()
+        
+        assert payload["system_prompt"] == "You are a helpful assistant."
+        assert payload["userPrompt"] == "Enhanced instructions for processing"
+        assert payload["query"] == "Original question"  # Query remains unchanged
         assert payload["disable_agentic"] is True
 
 
