@@ -110,7 +110,8 @@ class TangerineClient:
             "interactionId": str(uuid.uuid4()),
             "client": client_name,
             "stream": False,
-            "prompt": prompt
+            "prompt": prompt,
+            "disable_agentic": True
         }
     
     def _make_request(self, payload: Dict) -> Dict:

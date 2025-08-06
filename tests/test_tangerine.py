@@ -102,6 +102,38 @@ class TestTangerineClient:
         assert result.text == "Hello response"
         assert len(result.metadata) == 1
     
+    def test_chat_payload_includes_disable_agentic(self):
+        """Test that chat payload includes disable_agentic=True."""
+        captured_payload = {}
+        
+        def mock_make_request(payload):
+            captured_payload.update(payload)
+            return {
+                "text_content": "Test response",
+                "search_metadata": []
+            }
+        
+        client = TangerineClient("http://api.example.com", "token123")
+        client._make_request = mock_make_request
+        
+        client.chat(
+            assistants=["assistant1"],
+            query="Test query",
+            session_id="session123",
+            client_name="TestBot",
+            prompt="Test prompt"
+        )
+        
+        # Verify disable_agentic is included and set to True
+        assert "disable_agentic" in captured_payload
+        assert captured_payload["disable_agentic"] is True
+        
+        # Verify other expected fields are still present
+        assert captured_payload["assistants"] == ["assistant1"]
+        assert captured_payload["query"] == "Test query"
+        assert captured_payload["prompt"] == "Test prompt"
+        assert captured_payload["stream"] is False
+    
     def test_initialization_validation(self):
         """Test client initialization validation."""
         with pytest.raises(ValueError, match="Both api_url and api_token are required"):
