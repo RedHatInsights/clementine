@@ -13,6 +13,9 @@ from clementine.feedback_handler import FeedbackHandler
 from clementine.room_config_repository import RoomConfigRepository
 from clementine.room_config_service import RoomConfigService
 from clementine.config_modal_handler import ConfigModalHandler
+from clementine.slack_context_extractor import SlackContextExtractor
+from clementine.advanced_chat_client import AdvancedChatClient
+from clementine.slack_question_bot import SlackQuestionBot
 
 load_dotenv()
 
@@ -161,6 +164,22 @@ clementine_bot = ClementineBot(
     room_config_service=room_config_service
 )
 
+# Initialize Slack question components
+logger.info("Initializing Slack question components")
+slack_context_extractor = SlackContextExtractor(app.client)
+advanced_chat_client = AdvancedChatClient(
+    api_url=TANGERINE_API_URL,
+    api_token=TANGERINE_API_TOKEN,
+    timeout=TANGERINE_API_TIMEOUT
+)
+slack_question_bot = SlackQuestionBot(
+    slack_client=slack_client,
+    context_extractor=slack_context_extractor,
+    advanced_chat_client=advanced_chat_client,
+    bot_name=BOT_NAME,
+    formatter=formatter
+)
+
 logger.info("Bot '%s' initialized with assistants: %s", BOT_NAME, ASSISTANT_LIST)
 
 @app.event("app_mention")
@@ -221,12 +240,35 @@ def handle_clementine_command(ack, body, client):
                     user=body.get("user_id"),
                     text="❌ Sorry, I couldn't open the configuration modal. Please try again."
                 )
+        elif text.startswith("slack "):
+            # Handle slack context question command
+            question = text[6:].strip()  # Remove "slack " prefix
+            
+            if not question:
+                client.chat_postEphemeral(
+                    channel=body.get("channel_id"),
+                    user=body.get("user_id"),
+                    text="❌ Please provide a question. Example: `/clementine slack what are andrew and psav talking about re: cloweder`"
+                )
+                return
+            
+            channel_id = body.get("channel_id")
+            user_id = body.get("user_id")
+            
+            # For slash commands, there's no thread context, so we'll use channel history
+            slack_question_bot.handle_question(
+                question=question,
+                channel=channel_id,
+                thread_ts=None,  # No thread for slash commands
+                user_id=user_id,
+                slack_web_client=client
+            )
         else:
             # Show help text for unknown commands
             client.chat_postEphemeral(
                 channel=body.get("channel_id"),
                 user=body.get("user_id"),
-                text=f"Available commands:\n• `/clementine config` - Configure room settings\n\nUnknown command: `{text}`"
+                text=f"Available commands:\n• `/clementine config` - Configure room settings\n• `/clementine slack <question>` - Ask questions about channel context\n\nUnknown command: `{text}`"
             )
             
     except Exception as e:
