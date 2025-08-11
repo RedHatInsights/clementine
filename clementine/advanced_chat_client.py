@@ -66,18 +66,23 @@ class AdvancedChatClient:
     
     def chat_with_chunks(self, chunks_request: ChunksRequest) -> TangerineResponse:
         """Send chat request with custom chunks and return structured response."""
-        logger.debug("Sending chunks-based chat request for session %s", chunks_request.session_id)
-        logger.debug("Using %d chunks for context", len(chunks_request.chunks))
+        logger.info("API DEBUG: Sending chunks-based chat request for session %s", chunks_request.session_id)
+        logger.info("API DEBUG: Using %d chunks for context", len(chunks_request.chunks))
         
         payload = chunks_request.to_payload()
         
         # Log payload without chunks for debugging (chunks could be large)
         debug_payload = {k: v for k, v in payload.items() if k != "chunks"}
         debug_payload["chunks"] = f"[{len(payload['chunks'])} chunks]"
-        logger.debug("API payload: %s", debug_payload)
+        logger.info("API DEBUG: Full payload (without chunks): %s", debug_payload)
+        logger.info("API DEBUG: Using assistant: %s", chunks_request.assistant_name)
         
         response_data = self._make_request(payload)
-        logger.debug("Received response from advanced chat API")
+        logger.info("API DEBUG: Received response from advanced chat API")
+        
+        # Log the response text to see if it matches what we expect
+        response_text = response_data.get("text_content", "")
+        logger.info("API DEBUG: Response text: %s", response_text[:300] + "..." if len(response_text) > 300 else response_text)
         
         # Extract interaction_id from the payload we sent
         interaction_id = payload["interactionId"]

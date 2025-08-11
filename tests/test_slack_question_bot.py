@@ -235,10 +235,13 @@ class TestSlackQuestionBot:
         mock_slack_client.update_message_with_blocks.assert_called_once()
         mock_slack_client.update_message.assert_not_called()
     
-    @patch('clementine.slack_question_bot.generate_session_id')
-    def test_get_chat_response_session_id_generation(self, mock_generate_session_id, bot, mock_advanced_chat_client):
+    @patch('clementine.slack_question_bot.uuid.uuid4')
+    def test_get_chat_response_session_id_generation(self, mock_uuid4, bot, mock_advanced_chat_client):
         """Test session ID generation for chat response."""
-        mock_generate_session_id.return_value = "generated_session_id"
+        # Mock UUID to return a predictable value
+        mock_uuid_obj = Mock()
+        mock_uuid_obj.__str__ = Mock(return_value="unique-session-id")
+        mock_uuid4.return_value = mock_uuid_obj
         
         mock_response = TangerineResponse(text="Response", metadata=[], interaction_id="123")
         mock_advanced_chat_client.chat_with_chunks.return_value = mock_response
@@ -250,18 +253,21 @@ class TestSlackQuestionBot:
             thread_ts="1234567890.123"
         )
         
-        # Verify session ID generation
-        mock_generate_session_id.assert_called_once_with("C123456", "1234567890.123")
+        # Verify UUID was called to generate unique session ID
+        mock_uuid4.assert_called_once()
         
         # Verify chat call
         mock_advanced_chat_client.chat_with_chunks.assert_called_once()
         call_args = mock_advanced_chat_client.chat_with_chunks.call_args[0][0]
-        assert call_args.session_id == "generated_session_id"
+        assert call_args.session_id == "unique-session-id"
     
-    @patch('clementine.slack_question_bot.generate_session_id')
-    def test_get_chat_response_no_thread(self, mock_generate_session_id, bot, mock_advanced_chat_client):
+    @patch('clementine.slack_question_bot.uuid.uuid4')
+    def test_get_chat_response_no_thread(self, mock_uuid4, bot, mock_advanced_chat_client):
         """Test session ID generation when no thread timestamp."""
-        mock_generate_session_id.return_value = "generated_session_id"
+        # Mock UUID to return a predictable value
+        mock_uuid_obj = Mock()
+        mock_uuid_obj.__str__ = Mock(return_value="unique-session-id-no-thread")
+        mock_uuid4.return_value = mock_uuid_obj
         
         mock_response = TangerineResponse(text="Response", metadata=[], interaction_id="123")
         mock_advanced_chat_client.chat_with_chunks.return_value = mock_response
@@ -273,5 +279,10 @@ class TestSlackQuestionBot:
             thread_ts=None
         )
         
-        # Should use channel as fallback for session ID
-        mock_generate_session_id.assert_called_once_with("C123456", "C123456")
+        # Verify UUID was called to generate unique session ID
+        mock_uuid4.assert_called_once()
+        
+        # Verify chat call uses the unique session ID
+        mock_advanced_chat_client.chat_with_chunks.assert_called_once()
+        call_args = mock_advanced_chat_client.chat_with_chunks.call_args[0][0]
+        assert call_args.session_id == "unique-session-id-no-thread"

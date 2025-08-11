@@ -1,13 +1,13 @@
 """Slack question bot for answering questions about channel context."""
 
 import logging
+import uuid
 from typing import Dict, Union
 from slack_sdk.web.client import WebClient
 
 from .slack_client import SlackClient
 from .slack_context_extractor import SlackContextExtractor
 from .advanced_chat_client import AdvancedChatClient, ChunksRequest
-from .tangerine import generate_session_id
 from .formatters import ResponseFormatter, MessageFormatter
 from .error_handling import ErrorHandler
 
@@ -27,18 +27,21 @@ class SlackQuestionBot:
     """
     
     # Optimized system prompt for Slack RAG responses
-    SLACK_SYSTEM_PROMPT = """You are a helpful assistant that analyzes Slack conversations to answer questions. Your responses should be optimized for Slack:
+    SLACK_SYSTEM_PROMPT = """You are a helpful Slack bot that answers questions based on conversation history.
 
-CRITICAL REQUIREMENTS:
-- NO markdown formatting (no **bold**, *italic*, `code`, links, etc.)
-- Be as brief as possible while remaining accurate and helpful
-- Do NOT mention sources, citations, or your methodology
-- Do NOT explain your reasoning process
-- Answer directly and concisely
-- Use plain text only
-- If unsure, say "I don't have enough information" rather than guessing
+Instructions:
+- Answer questions directly using the conversation context provided
+- Use plain text only (no markdown, bold, italic, or special formatting)
+- Be conversational and helpful, providing sufficient detail to be useful
+- Don't mention sources, citations, or explain your methodology
+- Don't use numbered lists or bullet points for simple answers
+- If you need to list multiple things, use natural language instead
+- If information is unclear or missing, say so naturally
+- Focus on being accurate and helpful rather than overly brief
 
-Your job is to analyze the provided Slack messages and answer the user's question based on that context."""
+If you don't see any information in the context or a question, say so.
+
+"""
     
     def __init__(self, 
                  slack_client: SlackClient,
@@ -99,23 +102,50 @@ Your job is to analyze the provided Slack messages and answer the user's questio
         """Extract context from Slack channel or thread."""
         if thread_ts:
             # Extract from specific thread
-            logger.debug("Extracting context from thread %s", thread_ts)
-            return self.context_extractor.extract_thread_context(channel, thread_ts)
+            logger.info("SLACK RAG DEBUG: Extracting context from THREAD %s in channel %s", thread_ts, channel)
+            context = self.context_extractor.extract_thread_context(channel, thread_ts)
         else:
             # Extract from recent channel history
-            logger.debug("Extracting context from channel %s", channel)
-            return self.context_extractor.extract_channel_context(channel)
+            logger.info("SLACK RAG DEBUG: Extracting context from CHANNEL %s", channel)
+            context = self.context_extractor.extract_channel_context(channel)
+        
+        # Log first few context items for debugging
+        if context:
+            logger.info("SLACK RAG DEBUG: Retrieved %d context chunks. First chunk: %s", 
+                       len(context), context[0][:100] + "..." if len(context[0]) > 100 else context[0])
+        else:
+            logger.warning("SLACK RAG DEBUG: No context retrieved!")
+            
+        return context
     
     def _get_chat_response(self, question: str, context_chunks: list[str], 
                           channel: str, thread_ts: str):
         """Get response from advanced chat API using context chunks."""
-        # Create deterministic session ID
-        session_id = generate_session_id(channel, thread_ts or channel)
+        # Create unique session ID for each Slack RAG query to avoid cached responses
+        # We want each slash command to be treated as a fresh conversation
+        session_id = str(uuid.uuid4())
         
-        # Create optimized user prompt template for Slack context
-        user_prompt = """Based on the Slack conversation provided in the context, please answer the user's question.
+        logger.info("SLACK RAG DEBUG: Sending to API - Channel: %s, Thread: %s, Session ID: %s", 
+                   channel, thread_ts, session_id)
+        logger.info("SLACK RAG DEBUG: Question: %s", question)
+        logger.info("SLACK RAG DEBUG: Using %d context chunks", len(context_chunks))
+        
+        # Log first few chunks to verify we're getting correct context
+        if context_chunks:
+            logger.info("SLACK RAG DEBUG: First chunk: %s", context_chunks[0][:150] + "..." if len(context_chunks[0]) > 150 else context_chunks[0])
+            if len(context_chunks) > 1:
+                logger.info("SLACK RAG DEBUG: Second chunk: %s", context_chunks[1][:150] + "..." if len(context_chunks[1]) > 150 else context_chunks[1])
+        
+        # Create optimized user prompt with question and context interpolation
+        user_prompt = f"""Question: {question}
 
-Remember to respond in plain text without any markdown formatting, be concise, and don't mention your sources or methodology."""
+Context: The following are recent messages from this Slack channel: {context_chunks}
+
+Please answer the question above using the context provided. Be helpful and conversational, but don't mention sources or explain your methodology.
+
+Take care to differentiate between the various users in the context. The context you are provided are chat messages from users in a chat room. You'll see
+the usernames and what they said. Make sure to differentiate between users correctly and if you are asked about specific users, look at the usernames and make sure you are answering the question about the correct user.
+"""
         
         chunks_request = ChunksRequest(
             query=question,
@@ -126,8 +156,6 @@ Remember to respond in plain text without any markdown formatting, be concise, a
             user_prompt=user_prompt
         )
         
-        logger.debug("Requesting response from advanced chat API with %d chunks", 
-                    len(context_chunks))
         return self.advanced_chat_client.chat_with_chunks(chunks_request)
     
     def _update_message(self, channel: str, ts: str, formatted_message: Union[str, Dict]) -> None:

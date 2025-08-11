@@ -78,7 +78,7 @@ class SlackContextExtractor:
         """
         try:
             limit = limit or self.max_messages
-            logger.debug("Extracting channel context for channel %s, limit %d", channel, limit)
+            logger.info("CONTEXT DEBUG: Extracting channel context for channel %s, limit %d", channel, limit)
             
             response = self.client.conversations_history(
                 channel=channel,
@@ -86,15 +86,26 @@ class SlackContextExtractor:
             )
             
             messages = response.get("messages", [])
+            logger.info("CONTEXT DEBUG: Slack API returned %d raw messages for channel %s", len(messages), channel)
+            
+            # Log first message for debugging
+            if messages:
+                first_msg = messages[0]
+                logger.info("CONTEXT DEBUG: First message - Text: %s, User: %s, Channel: %s", 
+                           first_msg.get("text", "")[:50] + "..." if len(first_msg.get("text", "")) > 50 else first_msg.get("text", ""),
+                           first_msg.get("user", "unknown"),
+                           channel)
+            
             # Reverse to get chronological order (Slack returns newest first)
             messages.reverse()
             
-            logger.debug("Retrieved %d messages from channel", len(messages))
+            context = self._messages_to_context(messages)
+            logger.info("CONTEXT DEBUG: Converted to %d context strings", len(context))
             
-            return self._messages_to_context(messages)
+            return context
             
         except SlackApiError as e:
-            logger.error("Failed to extract channel context: %s", e)
+            logger.error("Failed to extract channel context for channel %s: %s", channel, e)
             return []
     
     def _messages_to_context(self, messages: List[dict]) -> List[str]:
