@@ -19,20 +19,31 @@ class ChunksRequest:
     chunks: List[str]
     session_id: str
     client_name: str
-    assistant_name: str = "clowder"
+    prompt: str
+    assistants: List[str] = None
+    
+    def __post_init__(self):
+        """Set default assistants if none provided."""
+        if self.assistants is None:
+            self.assistants = ["clowder"]
     
     def to_payload(self) -> Dict:
         """Convert to API payload format."""
-        return {
-            "assistants": [self.assistant_name],
+        payload = {
             "query": self.query,
             "sessionId": self.session_id,
             "interactionId": str(uuid.uuid4()),
             "client": self.client_name,
             "stream": False,
             "chunks": self.chunks,
+            "prompt": self.prompt,
             "disable_agentic": True
         }
+        
+        # Always include assistants (API requires it)
+        payload["assistants"] = self.assistants
+            
+        return payload
 
 
 class AdvancedChatClient:

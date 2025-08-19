@@ -107,6 +107,7 @@ class TestSlackQuestionBot:
         assert call_args.query == "What are they talking about?"
         assert call_args.chunks == ["User A: Working on the feature", "User B: Looks good to me"]
         assert call_args.client_name == "TestBot"
+        assert call_args.prompt  # Should have a prompt
         
         mock_formatter.format_with_sources.assert_called_once_with(mock_response)
         mock_slack_client.update_message.assert_called_once_with("C123456", "loading_ts_123", "Formatted response")
@@ -147,6 +148,7 @@ class TestSlackQuestionBot:
         mock_advanced_chat_client.chat_with_chunks.assert_called_once()
         call_args = mock_advanced_chat_client.chat_with_chunks.call_args[0][0]
         assert call_args.chunks == ["User A: Good morning", "User B: How's the project going?"]
+        assert call_args.prompt  # Should have a prompt
     
     def test_handle_question_no_loading_message(self, bot, mock_slack_client, mock_slack_web_client):
         """Test handling when loading message fails to post."""

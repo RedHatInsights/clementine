@@ -178,6 +178,7 @@ slack_question_bot = SlackQuestionBot(
     advanced_chat_client=advanced_chat_client,
     bot_name=BOT_NAME,
     formatter=formatter
+    # Uses DEFAULT_SLACK_ANALYSIS_PROMPT by default (designed for Slack conversation analysis)
 )
 
 logger.info("Bot '%s' initialized with assistants: %s", BOT_NAME, ASSISTANT_LIST)

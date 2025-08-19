@@ -19,35 +19,39 @@ class TestChunksRequest:
             query="What are they talking about?",
             chunks=["User A: Hello", "User B: Hi there"],
             session_id="session-123",
-            client_name="test-client"
+            client_name="test-client",
+            prompt="You are a helpful assistant."
         )
         
         payload = chunks_request.to_payload()
         
-        assert payload["assistants"] == ["clowder"]
         assert payload["query"] == "What are they talking about?"
         assert payload["chunks"] == ["User A: Hello", "User B: Hi there"]
         assert payload["sessionId"] == "session-123"
         assert payload["client"] == "test-client"
+        assert payload["prompt"] == "You are a helpful assistant."
         assert payload["stream"] is False
         assert payload["disable_agentic"] is True
+        assert payload["assistants"] == ["clowder"]  # Default assistant
         
         # Check that interactionId is a valid UUID
         assert UUID(payload["interactionId"])
     
-    def test_to_payload_custom_assistant(self):
-        """Test converting request to API payload with custom assistant name."""
+    def test_to_payload_with_assistants(self):
+        """Test converting request to API payload with custom assistants."""
         chunks_request = ChunksRequest(
             query="Test question",
             chunks=["chunk1"],
             session_id="session-123",
             client_name="test-client",
-            assistant_name="customAssistant"
+            prompt="You are a helpful assistant.",
+            assistants=["custom_assistant"]
         )
         
         payload = chunks_request.to_payload()
         
-        assert payload["assistants"] == ["customAssistant"]
+        assert payload["assistants"] == ["custom_assistant"]
+        assert payload["prompt"] == "You are a helpful assistant."
         assert payload["disable_agentic"] is True
 
 
@@ -100,7 +104,8 @@ class TestAdvancedChatClient:
             query="What are they talking about?",
             chunks=["User A: Working on the new feature", "User B: Looks good"],
             session_id="session-123",
-            client_name="test-client"
+            client_name="test-client",
+            prompt="You are a helpful assistant."
         )
         
         result = client.chat_with_chunks(chunks_request)
@@ -122,11 +127,12 @@ class TestAdvancedChatClient:
         
         # Verify payload
         payload = call_args[1]["json"]
-        assert payload["assistants"] == ["clowder"]
         assert payload["query"] == "What are they talking about?"
         assert payload["chunks"] == ["User A: Working on the new feature", "User B: Looks good"]
+        assert payload["prompt"] == "You are a helpful assistant."
         assert payload["sessionId"] == "session-123"
         assert payload["client"] == "test-client"
+        assert payload["assistants"] == ["clowder"]  # Default assistant
         assert payload["stream"] is False
         assert UUID(payload["interactionId"])
     
@@ -139,7 +145,8 @@ class TestAdvancedChatClient:
             query="Test question",
             chunks=["chunk1"],
             session_id="session-123",
-            client_name="test-client"
+            client_name="test-client",
+            prompt="You are a helpful assistant."
         )
         
         with pytest.raises(requests.exceptions.Timeout):
@@ -154,7 +161,8 @@ class TestAdvancedChatClient:
             query="Test question",
             chunks=["chunk1"],
             session_id="session-123",
-            client_name="test-client"
+            client_name="test-client",
+            prompt="You are a helpful assistant."
         )
         
         with pytest.raises(requests.exceptions.ConnectionError):
@@ -172,7 +180,8 @@ class TestAdvancedChatClient:
             query="Test question",
             chunks=["chunk1"],
             session_id="session-123",
-            client_name="test-client"
+            client_name="test-client",
+            prompt="You are a helpful assistant."
         )
         
         with pytest.raises(requests.exceptions.HTTPError):
@@ -190,7 +199,8 @@ class TestAdvancedChatClient:
             query="Test question",
             chunks=["chunk1"],
             session_id="session-123",
-            client_name="test-client"
+            client_name="test-client",
+            prompt="You are a helpful assistant."
         )
         
         with pytest.raises(json.JSONDecodeError):
