@@ -55,7 +55,7 @@ USER default
 
 # Health check to ensure the application is running
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python -c "import sqlite3; conn = sqlite3.connect('$ROOM_CONFIG_DB_PATH'); conn.close()" || exit 1
+    CMD python -c "import os, sqlite3; conn = sqlite3.connect(os.environ['ROOM_CONFIG_DB_PATH']); conn.close()" || exit 1
 
 # Expose port (though Socket Mode doesn't require it, useful for documentation)
 EXPOSE 3000
