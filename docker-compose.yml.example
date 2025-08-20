@@ -1,0 +1,51 @@
+# Example Docker Compose configuration for Clementine Slack bot
+# Copy this file to docker-compose.yml and update the environment variables
+
+version: '3.8'
+
+services:
+  clementine:
+    build: .
+    container_name: clementine-bot
+    restart: unless-stopped
+    
+    # Environment variables - UPDATE THESE VALUES!
+    environment:
+      # Required Slack configuration
+      SLACK_BOT_TOKEN: "xoxb-your-bot-token-here"
+      SLACK_SIGNING_SECRET: "your-signing-secret-here"
+      SLACK_APP_TOKEN: "xapp-your-app-token-here"
+      
+      # Required Tangerine API configuration
+      TANGERINE_API_URL: "https://your-tangerine-api.example.com"
+      TANGERINE_API_TOKEN: "your-tangerine-api-token-here"
+      
+      # Optional configuration (uncomment and modify as needed)
+      # LOG_LEVEL: "DEBUG"
+      # BOT_NAME: "MyBot"
+      # ASSISTANT_LIST: "konflux,other-assistant"
+      # DEFAULT_PROMPT: "You are a helpful AI assistant specialized in software development."
+      # TANGERINE_API_TIMEOUT: "600"
+      # AI_DISCLOSURE_ENABLED: "true"
+      # FEEDBACK_ENABLED: "true"
+    
+    # Persistent volume for database storage
+    volumes:
+      - clementine_data:/app/data
+      # Optional: Mount logs directory (uncomment if LOG_FILE is set)
+      # - ./logs:/app/logs
+    
+    # Optional: Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+
+# Named volume for persistent database storage
+volumes:
+  clementine_data:
+    driver: local
