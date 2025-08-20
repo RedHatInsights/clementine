@@ -3,6 +3,8 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 import os
 import logging
 import json
+import threading
+import time
 from dotenv import load_dotenv
 
 from clementine.config.logging import LoggingConfigurator
@@ -182,6 +184,25 @@ slack_question_bot = SlackQuestionBot(
 )
 
 logger.info("Bot '%s' initialized with assistants: %s", BOT_NAME, ASSISTANT_LIST)
+
+# Health check file path
+HEALTH_FILE_PATH = "/tmp/health"
+
+def update_health_file():
+    """Update the health file periodically to indicate the application is running."""
+    while True:
+        try:
+            with open(HEALTH_FILE_PATH, 'w') as f:
+                f.write(str(int(time.time())))
+            logger.debug("Health file updated")
+        except Exception as e:
+            logger.warning("Failed to update health file: %s", e)
+        time.sleep(30)  # Update every 30 seconds
+
+# Start health check thread
+health_thread = threading.Thread(target=update_health_file, daemon=True)
+health_thread.start()
+logger.info("Health check thread started")
 
 @app.event("app_mention")
 def handle_mention(event, say, client):
