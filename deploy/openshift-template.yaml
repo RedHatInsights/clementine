@@ -91,7 +91,7 @@ parameters:
 - name: DEFAULT_PROMPT
   displayName: "Default Prompt"
   description: "Default prompt for AI assistant"
-  value: "You are a helpful slack bot than can answer questions in a slack channel."
+  value: "You are a helpful slack bot that can answer questions in a slack channel."
   required: false
 
 - name: TANGERINE_API_TIMEOUT
