@@ -91,8 +91,8 @@ parameters:
 - name: DEFAULT_PROMPT
   displayName: "Default Prompt"
   description: "Default prompt for AI assistant"
-  value: "You are a helpful slack bot that can answer questions in a slack channel."
-  required: false
+  value: "You are a helpful slack bot than can answer questions in a slack channel."
+  required: falsegit 
 
 - name: TANGERINE_API_TIMEOUT
   displayName: "API Timeout"
@@ -325,28 +325,31 @@ objects:
           volumeMounts:
           - name: data-volume
             mountPath: /app/data
+          - name: tmp-volume
+            mountPath: /tmp
           
           # Health checks
+          # Simple file-based health check - application should touch this file periodically
           livenessProbe:
             exec:
               command:
-              - python
+              - /bin/sh
               - -c
-              - "import os, sqlite3; conn = sqlite3.connect(os.environ['ROOM_CONFIG_DB_PATH']); conn.close()"
+              - "test -f /tmp/health && test $(( $(date +%s) - $(stat -c %Y /tmp/health 2>/dev/null || echo 0) )) -lt 120"
             initialDelaySeconds: 60
             periodSeconds: 30
-            timeoutSeconds: 10
+            timeoutSeconds: 5
             failureThreshold: 3
           
           readinessProbe:
             exec:
               command:
-              - python
+              - /bin/sh
               - -c
-              - "import os, sqlite3; conn = sqlite3.connect(os.environ['ROOM_CONFIG_DB_PATH']); conn.close()"
+              - "test -f /tmp/health"
             initialDelaySeconds: 30
             periodSeconds: 10
-            timeoutSeconds: 5
+            timeoutSeconds: 3
             failureThreshold: 3
           
           # Security context
@@ -354,7 +357,7 @@ objects:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
             runAsUser: 1001
-            readOnlyRootFilesystem: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
               - ALL
@@ -370,6 +373,8 @@ objects:
         - name: data-volume
           persistentVolumeClaim:
             claimName: "${APP_NAME}-data"
+        - name: tmp-volume
+          emptyDir: {}
         
         # Restart policy
         restartPolicy: Always

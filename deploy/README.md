@@ -133,13 +133,15 @@ The OpenShift template creates the following resources:
 
 ### Security Features:
 - Non-root container execution
-- Read-only root filesystem (where possible)
+- Read-only root filesystem with writable volumes for necessary directories
 - Security context with dropped capabilities
 - Resource limits and requests
+- Minimal attack surface with restricted filesystem access
 
 ### Monitoring:
-- Liveness and readiness probes
-- Health checks for database connectivity
+- Liveness and readiness probes using simple file-based health checks
+- Application automatically maintains a health file at `/tmp/health`
+- No complex dependencies or database operations in health checks
 
 ## Configuration
 
@@ -188,7 +190,16 @@ These can be adjusted using the `MEMORY_REQUEST`, `MEMORY_LIMIT`, `CPU_REQUEST`,
    oc describe deployment clementine
    ```
 
-2. **Database connection issues**
+2. **Health check issues**
+   ```bash
+   # Check if health file exists in pod
+   oc exec deployment/clementine -- ls -la /tmp/health
+   
+   # Check health file timestamp
+   oc exec deployment/clementine -- stat /tmp/health
+   ```
+
+3. **Database connection issues**
    ```bash
    # Check persistent volume
    oc get pvc clementine-data
@@ -197,7 +208,7 @@ These can be adjusted using the `MEMORY_REQUEST`, `MEMORY_LIMIT`, `CPU_REQUEST`,
    oc describe pod -l app=clementine | grep -A 10 "Mounts:"
    ```
 
-3. **Configuration issues**
+4. **Configuration issues**
    ```bash
    # Check secrets
    oc get secret clementine-secrets -o yaml
@@ -206,7 +217,7 @@ These can be adjusted using the `MEMORY_REQUEST`, `MEMORY_LIMIT`, `CPU_REQUEST`,
    oc get configmap clementine-config -o yaml
    ```
 
-4. **Application logs**
+5. **Application logs**
    ```bash
    # View recent logs
    oc logs deployment/clementine --tail=100
@@ -234,10 +245,22 @@ oc rollout restart deployment/clementine
 ## Security Considerations
 
 - Sensitive configuration is stored in Kubernetes secrets
-- Container runs as non-root user
+- Container runs as non-root user with read-only root filesystem
+- Writable volumes are mounted only where necessary (/tmp, /app/data)
 - Resource limits prevent resource exhaustion
+- Security context drops all capabilities
 - Network policies can be added for additional security
 - Consider using OpenShift's built-in certificate management for TLS
+
+## Health Checks
+
+The deployment uses simple file-based health checks instead of complex application logic:
+
+- **Liveness Probe**: Checks that `/tmp/health` file exists and was updated within the last 2 minutes
+- **Readiness Probe**: Checks that `/tmp/health` file exists
+- **Application**: Automatically updates the health file every 30 seconds in a background thread
+
+This approach is more reliable than database connectivity checks and avoids potential issues with Python imports or dependencies during health check execution.
 
 ## Scaling
 

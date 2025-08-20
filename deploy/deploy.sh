@@ -3,7 +3,7 @@
 # OpenShift Deployment Script for Clementine Slack Bot
 # This script helps deploy the Clementine bot to OpenShift using the template
 
-set -e  # Exit on any error
+set -euo pipefail  # Exit on any error, undefined variables, and pipe failures
 
 # Colors for output
 RED='\033[0;31m'
