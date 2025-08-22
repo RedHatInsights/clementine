@@ -16,6 +16,7 @@ class RoomConfig:
     room_id: str
     assistant_list: Optional[str] = None  # JSON string of assistants
     system_prompt: Optional[str] = None
+    slack_context_size: Optional[int] = None  # Number of messages to include in slack context
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -27,7 +28,8 @@ class RoomConfig:
         return cls(
             room_id=data["room_id"],
             assistant_list=data.get("assistant_list"),
-            system_prompt=data.get("system_prompt")
+            system_prompt=data.get("system_prompt"),
+            slack_context_size=data.get("slack_context_size")
         )
 
 
@@ -47,10 +49,20 @@ class RoomConfigRepository:
                         room_id TEXT PRIMARY KEY,
                         assistant_list TEXT,
                         system_prompt TEXT,
+                        slack_context_size INTEGER,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 """)
+                
+                # Add slack_context_size column if it doesn't exist (for existing databases)
+                try:
+                    conn.execute("ALTER TABLE room_configs ADD COLUMN slack_context_size INTEGER")
+                    logger.info("Added slack_context_size column to existing room_configs table")
+                except sqlite3.OperationalError:
+                    # Column already exists, which is fine
+                    pass
+                
                 conn.commit()
                 logger.info("Room configuration database initialized at %s", self.db_path)
         except sqlite3.Error as e:
@@ -79,7 +91,7 @@ class RoomConfigRepository:
         try:
             with self._get_connection() as conn:
                 cursor = conn.execute(
-                    "SELECT room_id, assistant_list, system_prompt FROM room_configs WHERE room_id = ?",
+                    "SELECT room_id, assistant_list, system_prompt, slack_context_size FROM room_configs WHERE room_id = ?",
                     (room_id,)
                 )
                 row = cursor.fetchone()
@@ -89,7 +101,8 @@ class RoomConfigRepository:
                     return RoomConfig(
                         room_id=row["room_id"],
                         assistant_list=row["assistant_list"],
-                        system_prompt=row["system_prompt"]
+                        system_prompt=row["system_prompt"],
+                        slack_context_size=row["slack_context_size"]
                     )
                 else:
                     logger.debug("No room config found for room %s", room_id)
@@ -105,9 +118,9 @@ class RoomConfigRepository:
             with self._get_connection() as conn:
                 conn.execute("""
                     INSERT OR REPLACE INTO room_configs 
-                    (room_id, assistant_list, system_prompt, updated_at)
-                    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-                """, (config.room_id, config.assistant_list, config.system_prompt))
+                    (room_id, assistant_list, system_prompt, slack_context_size, updated_at)
+                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                """, (config.room_id, config.assistant_list, config.system_prompt, config.slack_context_size))
                 conn.commit()
                 
                 logger.info("Saved room config for room %s", config.room_id)
@@ -144,7 +157,7 @@ class RoomConfigRepository:
         try:
             with self._get_connection() as conn:
                 cursor = conn.execute(
-                    "SELECT room_id, assistant_list, system_prompt FROM room_configs"
+                    "SELECT room_id, assistant_list, system_prompt, slack_context_size FROM room_configs"
                 )
                 
                 configs = {}
@@ -152,7 +165,8 @@ class RoomConfigRepository:
                     config = RoomConfig(
                         room_id=row["room_id"],
                         assistant_list=row["assistant_list"],
-                        system_prompt=row["system_prompt"]
+                        system_prompt=row["system_prompt"],
+                        slack_context_size=row["slack_context_size"]
                     )
                     configs[config.room_id] = config
                 

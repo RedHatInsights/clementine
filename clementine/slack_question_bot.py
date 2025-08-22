@@ -10,6 +10,7 @@ from .advanced_chat_client import AdvancedChatClient, ChunksRequest
 from .tangerine import generate_session_id
 from .formatters import ResponseFormatter, MessageFormatter
 from .error_handling import ErrorHandler
+from .room_config_service import RoomConfigService
 
 logger = logging.getLogger(__name__)
 
@@ -59,12 +60,14 @@ class SlackQuestionBot:
                  context_extractor: SlackContextExtractor,
                  advanced_chat_client: AdvancedChatClient,
                  bot_name: str,
+                 room_config_service: RoomConfigService,
                  formatter: ResponseFormatter = None,
                  system_prompt: str = None):
         self.slack_client = slack_client
         self.context_extractor = context_extractor
         self.advanced_chat_client = advanced_chat_client
         self.bot_name = bot_name
+        self.room_config_service = room_config_service
         self.formatter = formatter or MessageFormatter()
         self.error_handler = ErrorHandler(bot_name)
         self.system_prompt = system_prompt or DEFAULT_SLACK_ANALYSIS_PROMPT
@@ -112,15 +115,19 @@ class SlackQuestionBot:
             self._update_message_with_error(channel, loading_ts, error_message)
     
     def _extract_context(self, channel: str, thread_ts: str) -> list[str]:
-        """Extract context from Slack channel or thread."""
+        """Extract context from Slack channel or thread using room-specific context size."""
+        # Get room-specific configuration
+        room_config = self.room_config_service.get_room_config(channel)
+        context_limit = room_config.slack_context_size
+        
         if thread_ts:
             # Extract from specific thread
-            logger.debug("Extracting context from thread %s", thread_ts)
-            return self.context_extractor.extract_thread_context(channel, thread_ts)
+            logger.debug("Extracting context from thread %s with limit %d", thread_ts, context_limit)
+            return self.context_extractor.extract_thread_context(channel, thread_ts, limit=context_limit)
         else:
             # Extract from recent channel history
-            logger.debug("Extracting context from channel %s", channel)
-            return self.context_extractor.extract_channel_context(channel)
+            logger.debug("Extracting context from channel %s with limit %d", channel, context_limit)
+            return self.context_extractor.extract_channel_context(channel, limit=context_limit)
     
     def _get_chat_response(self, question: str, context_chunks: list[str], 
                           channel: str, thread_ts: str):

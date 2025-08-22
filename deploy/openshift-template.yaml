@@ -124,6 +124,18 @@ parameters:
   value: "true"
   required: false
 
+- name: SLACK_MIN_CONTEXT
+  displayName: "Slack Min Context Size"
+  description: "Minimum number of messages for Slack context (room config lower bound)"
+  value: "50"
+  required: false
+
+- name: SLACK_MAX_CONTEXT
+  displayName: "Slack Max Context Size"
+  description: "Maximum number of messages for Slack context (room config upper bound)"
+  value: "250"
+  required: false
+
 # Resource configuration
 - name: MEMORY_LIMIT
   displayName: "Memory Limit"
@@ -190,6 +202,8 @@ objects:
     ai-disclosure-enabled: "${AI_DISCLOSURE_ENABLED}"
     ai-disclosure-text: "${AI_DISCLOSURE_TEXT}"
     feedback-enabled: "${FEEDBACK_ENABLED}"
+    slack-min-context: "${SLACK_MIN_CONTEXT}"
+    slack-max-context: "${SLACK_MAX_CONTEXT}"
 
 # PersistentVolumeClaim for database storage
 - apiVersion: v1
@@ -311,6 +325,16 @@ objects:
               configMapKeyRef:
                 name: "${APP_NAME}-config"
                 key: feedback-enabled
+          - name: SLACK_MIN_CONTEXT
+            valueFrom:
+              configMapKeyRef:
+                name: "${APP_NAME}-config"
+                key: slack-min-context
+          - name: SLACK_MAX_CONTEXT
+            valueFrom:
+              configMapKeyRef:
+                name: "${APP_NAME}-config"
+                key: slack-max-context
           
           # Resource limits and requests
           resources:
