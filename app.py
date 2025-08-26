@@ -169,7 +169,6 @@ advanced_chat_client = AdvancedChatClient(
     api_token=TANGERINE_API_TOKEN,
     timeout=TANGERINE_API_TIMEOUT
 )
-
 slack_question_bot = SlackQuestionBot(
     slack_client=slack_client,
     context_extractor=slack_context_extractor,
