@@ -17,6 +17,9 @@ class TestConfigModalHandler:
             "room_id": "test_room",
             "assistant_list": ["assistant1"],
             "system_prompt": "Test prompt",
+            "slack_context_size": 50,
+            "slack_min_context": 50,
+            "slack_max_context": 250,
             "has_custom_config": True,
             "assistant_list_json": '["assistant1"]'
         }
@@ -52,6 +55,9 @@ class TestConfigModalHandler:
             "room_id": "test_room",
             "assistant_list": ["assistant1"],
             "system_prompt": "Test prompt",
+            "slack_context_size": 50,
+            "slack_min_context": 50,
+            "slack_max_context": 250,
             "has_custom_config": False,
             "assistant_list_json": '["assistant1"]'
         }

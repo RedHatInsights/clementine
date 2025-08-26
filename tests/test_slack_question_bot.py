@@ -11,6 +11,7 @@ from clementine.advanced_chat_client import AdvancedChatClient, ChunksRequest
 from clementine.tangerine import TangerineResponse
 from clementine.formatters import MessageFormatter
 from clementine.error_handling import ErrorHandler
+from clementine.room_config_service import RoomConfigService, ProcessedRoomConfig
 
 
 class TestSlackQuestionBot:
@@ -42,29 +43,45 @@ class TestSlackQuestionBot:
         return Mock(spec=WebClient)
     
     @pytest.fixture
-    def bot(self, mock_slack_client, mock_context_extractor, mock_advanced_chat_client, mock_formatter):
+    def mock_room_config_service(self):
+        """Create mock RoomConfigService."""
+        mock_service = Mock(spec=RoomConfigService)
+        # Setup default return value for get_room_config
+        mock_service.get_room_config.return_value = ProcessedRoomConfig(
+            room_id="test_channel",
+            assistant_list=["test_assistant"],
+            system_prompt="Test prompt",
+            slack_context_size=50
+        )
+        return mock_service
+    
+    @pytest.fixture
+    def bot(self, mock_slack_client, mock_context_extractor, mock_advanced_chat_client, mock_formatter, mock_room_config_service):
         """Create SlackQuestionBot for testing."""
         return SlackQuestionBot(
             slack_client=mock_slack_client,
             context_extractor=mock_context_extractor,
             advanced_chat_client=mock_advanced_chat_client,
             bot_name="TestBot",
+            room_config_service=mock_room_config_service,
             formatter=mock_formatter
         )
     
-    def test_init(self, mock_slack_client, mock_context_extractor, mock_advanced_chat_client):
+    def test_init(self, mock_slack_client, mock_context_extractor, mock_advanced_chat_client, mock_room_config_service):
         """Test initialization."""
         bot = SlackQuestionBot(
             slack_client=mock_slack_client,
             context_extractor=mock_context_extractor,
             advanced_chat_client=mock_advanced_chat_client,
-            bot_name="TestBot"
+            bot_name="TestBot",
+            room_config_service=mock_room_config_service
         )
         
         assert bot.slack_client == mock_slack_client
         assert bot.context_extractor == mock_context_extractor
         assert bot.advanced_chat_client == mock_advanced_chat_client
         assert bot.bot_name == "TestBot"
+        assert bot.room_config_service == mock_room_config_service
         assert isinstance(bot.formatter, MessageFormatter)  # default
         assert isinstance(bot.error_handler, ErrorHandler)
     
@@ -97,7 +114,7 @@ class TestSlackQuestionBot:
         
         # Verify calls
         mock_slack_client.post_loading_message.assert_called_once_with("C123456", "1234567890.123")
-        mock_context_extractor.extract_thread_context.assert_called_once_with("C123456", "1234567890.123")
+        mock_context_extractor.extract_thread_context.assert_called_once_with("C123456", "1234567890.123", limit=50)
         mock_context_extractor.extract_channel_context.assert_not_called()
         
         # Verify advanced chat client call
@@ -141,7 +158,7 @@ class TestSlackQuestionBot:
         
         # Verify calls
         mock_slack_client.post_loading_message.assert_called_once_with("C123456", None)
-        mock_context_extractor.extract_channel_context.assert_called_once_with("C123456")
+        mock_context_extractor.extract_channel_context.assert_called_once_with("C123456", limit=50)
         mock_context_extractor.extract_thread_context.assert_not_called()
         
         # Verify advanced chat client call

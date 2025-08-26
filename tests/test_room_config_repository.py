@@ -238,7 +238,8 @@ class TestRoomConfigRepository:
         expected = {
             "room_id": "test",
             "assistant_list": '["a1", "a2"]',
-            "system_prompt": "Test prompt"
+            "system_prompt": "Test prompt",
+            "slack_context_size": None
         }
         assert data == expected
         
@@ -247,3 +248,4 @@ class TestRoomConfigRepository:
         assert recreated.room_id == config.room_id
         assert recreated.assistant_list == config.assistant_list
         assert recreated.system_prompt == config.system_prompt
+        assert recreated.slack_context_size == config.slack_context_size

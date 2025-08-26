@@ -23,7 +23,10 @@ class TestRoomConfigService:
         service = RoomConfigService(
             repository=mock_repo,
             default_assistants=["default_assistant"],
-            default_prompt="Default prompt"
+            default_prompt="Default prompt",
+            default_slack_context=50,
+            slack_min_context=50,
+            slack_max_context=250
         )
         
         config = service.get_room_config("test_room")
@@ -42,7 +45,10 @@ class TestRoomConfigService:
         service = RoomConfigService(
             repository=mock_repo,
             default_assistants=["default_assistant"],
-            default_prompt="Default prompt"
+            default_prompt="Default prompt",
+            default_slack_context=50,
+            slack_min_context=50,
+            slack_max_context=250
         )
         
         config = service.get_room_config("test_room")
@@ -64,7 +70,10 @@ class TestRoomConfigService:
         service = RoomConfigService(
             repository=mock_repo,
             default_assistants=["default_assistant"],
-            default_prompt="Default prompt"
+            default_prompt="Default prompt",
+            default_slack_context=50,
+            slack_min_context=50,
+            slack_max_context=250
         )
         
         config = service.get_room_config("test_room")
@@ -85,7 +94,10 @@ class TestRoomConfigService:
         service = RoomConfigService(
             repository=mock_repo,
             default_assistants=["default_assistant"],
-            default_prompt="Default prompt"
+            default_prompt="Default prompt",
+            default_slack_context=50,
+            slack_min_context=50,
+            slack_max_context=250
         )
         
         config = service.get_room_config("test_room")
@@ -106,7 +118,10 @@ class TestRoomConfigService:
         service = RoomConfigService(
             repository=mock_repo,
             default_assistants=["default_assistant"],
-            default_prompt="Default prompt"
+            default_prompt="Default prompt",
+            default_slack_context=50,
+            slack_min_context=50,
+            slack_max_context=250
         )
         
         config = service.get_room_config("test_room")
@@ -123,7 +138,10 @@ class TestRoomConfigService:
         service = RoomConfigService(
             repository=mock_repo,
             default_assistants=["default"],
-            default_prompt="Default"
+            default_prompt="Default",
+            default_slack_context=50,
+            slack_min_context=50,
+            slack_max_context=250
         )
         
         result = service.save_room_config(
@@ -149,7 +167,10 @@ class TestRoomConfigService:
         service = RoomConfigService(
             repository=mock_repo,
             default_assistants=["default"],
-            default_prompt="Default"
+            default_prompt="Default",
+            default_slack_context=50,
+            slack_min_context=50,
+            slack_max_context=250
         )
         
         # Test with invalid assistant list but valid prompt
@@ -176,7 +197,10 @@ class TestRoomConfigService:
         service = RoomConfigService(
             repository=mock_repo,
             default_assistants=["default"],
-            default_prompt="Default"
+            default_prompt="Default",
+            default_slack_context=50,
+            slack_min_context=50,
+            slack_max_context=250
         )
         
         result = service.save_room_config(
@@ -195,7 +219,10 @@ class TestRoomConfigService:
         service = RoomConfigService(
             repository=mock_repo,
             default_assistants=["default"],
-            default_prompt="Default"
+            default_prompt="Default",
+            default_slack_context=50,
+            slack_min_context=50,
+            slack_max_context=250
         )
         
         # Test with invalid assistant list AND invalid prompt
@@ -216,7 +243,10 @@ class TestRoomConfigService:
         service = RoomConfigService(
             repository=mock_repo,
             default_assistants=["default"],
-            default_prompt="Default"
+            default_prompt="Default",
+            default_slack_context=50,
+            slack_min_context=50,
+            slack_max_context=250
         )
         
         # Save only assistant list
@@ -239,7 +269,10 @@ class TestRoomConfigService:
         service = RoomConfigService(
             repository=mock_repo,
             default_assistants=["default"],
-            default_prompt="Default"
+            default_prompt="Default",
+            default_slack_context=50,
+            slack_min_context=50,
+            slack_max_context=250
         )
         
         result = service.delete_room_config("test_room")
@@ -259,7 +292,10 @@ class TestRoomConfigService:
         service = RoomConfigService(
             repository=mock_repo,
             default_assistants=["default"],
-            default_prompt="Default"
+            default_prompt="Default",
+            default_slack_context=50,
+            slack_min_context=50,
+            slack_max_context=250
         )
         
         display_config = service.get_current_config_for_display("test_room")
@@ -281,7 +317,10 @@ class TestRoomConfigService:
         service = RoomConfigService(
             repository=mock_repo,
             default_assistants=["default_assistant"],
-            default_prompt="Default prompt"
+            default_prompt="Default prompt",
+            default_slack_context=50,
+            slack_min_context=50,
+            slack_max_context=250
         )
         
         display_config = service.get_current_config_for_display("test_room")
@@ -303,7 +342,10 @@ class TestRoomConfigService:
         service = RoomConfigService(
             repository=mock_repo,
             default_assistants=["default"],
-            default_prompt="Default"
+            default_prompt="Default",
+            default_slack_context=50,
+            slack_min_context=50,
+            slack_max_context=250
         )
         
         result = service.reset_to_defaults("test_room")
@@ -322,7 +364,10 @@ class TestRoomConfigService:
         service = RoomConfigService(
             repository=mock_repo,
             default_assistants=["default"],
-            default_prompt="Default"
+            default_prompt="Default",
+            default_slack_context=50,
+            slack_min_context=50,
+            slack_max_context=250
         )
         
         # Should not raise exception, should return defaults
