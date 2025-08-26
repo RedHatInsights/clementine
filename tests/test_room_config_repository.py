@@ -185,7 +185,7 @@ class TestRoomConfigRepository:
                 os.unlink(temp_db_path)
     
     def test_partial_config_save(self):
-        """Test saving configuration with only some fields set."""
+        """Test saving configuration with only some fields set (partial update preserves existing)."""
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             temp_db_path = temp_file.name
         
@@ -201,13 +201,13 @@ class TestRoomConfigRepository:
             assert retrieved.assistant_list == '["assistant1"]'
             assert retrieved.system_prompt is None
             
-            # Update with only system prompt
+            # Update with only system prompt (None values preserve existing)
             config2 = RoomConfig(room_id="test_room", assistant_list=None, system_prompt="New prompt")
             result = repo.save_room_config(config2)
             assert result is True
             
             retrieved = repo.get_room_config("test_room")
-            assert retrieved.assistant_list is None  # Should be overwritten
+            assert retrieved.assistant_list == '["assistant1"]'  # Should be preserved (not overwritten with None)
             assert retrieved.system_prompt == "New prompt"
             
         finally:
@@ -371,9 +371,9 @@ class TestRoomConfigRepository:
             original_created_at = row["created_at"]
             original_updated_at = row["updated_at"]
         
-        # Wait a tiny bit to ensure timestamps would be different
+        # Wait a bit to ensure timestamps would be different (SQLite timestamps have second precision)
         import time
-        time.sleep(0.001)
+        time.sleep(1.1)
         
         # Update the config
         update_config = RoomConfig(

@@ -38,6 +38,7 @@ class RoomConfigRepository:
     
     def __init__(self, db_path: str = "room_configs.db"):
         self.db_path = db_path
+        self._persistent_conn = None  # For in-memory databases
         self._ensure_database_exists()
     
     def _ensure_database_exists(self) -> None:
@@ -59,9 +60,12 @@ class RoomConfigRepository:
                 try:
                     conn.execute("ALTER TABLE room_configs ADD COLUMN slack_context_size INTEGER")
                     logger.info("Added slack_context_size column to existing room_configs table")
-                except sqlite3.OperationalError:
-                    # Column already exists, which is fine
-                    pass
+                except sqlite3.OperationalError as e:
+                    # Column already exists or table was created with column, which is fine
+                    if "duplicate column name" in str(e).lower():
+                        logger.debug("slack_context_size column already exists")
+                    else:
+                        logger.debug("ALTER TABLE failed (likely column exists): %s", e)
                 
                 conn.commit()
                 logger.info("Room configuration database initialized at %s", self.db_path)
@@ -72,19 +76,34 @@ class RoomConfigRepository:
     @contextmanager
     def _get_connection(self):
         """Get database connection with proper error handling."""
-        conn = None
-        try:
-            conn = sqlite3.connect(self.db_path)
-            conn.row_factory = sqlite3.Row  # Enable column access by name
-            yield conn
-        except sqlite3.Error as e:
-            if conn:
+        if self.db_path == ":memory:":
+            # For in-memory databases, maintain a persistent connection
+            if self._persistent_conn is None:
+                self._persistent_conn = sqlite3.connect(self.db_path)
+                self._persistent_conn.row_factory = sqlite3.Row
+            conn = self._persistent_conn
+            try:
+                yield conn
+            except sqlite3.Error as e:
                 conn.rollback()
-            logger.error("Database error: %s", e)
-            raise
-        finally:
-            if conn:
-                conn.close()
+                logger.error("Database error: %s", e)
+                raise
+            # Don't close persistent connection
+        else:
+            # For file databases, use regular connection management
+            conn = None
+            try:
+                conn = sqlite3.connect(self.db_path)
+                conn.row_factory = sqlite3.Row  # Enable column access by name
+                yield conn
+            except sqlite3.Error as e:
+                if conn:
+                    conn.rollback()
+                logger.error("Database error: %s", e)
+                raise
+            finally:
+                if conn:
+                    conn.close()
     
     def get_room_config(self, room_id: str) -> Optional[RoomConfig]:
         """Get room configuration by room ID."""
@@ -127,19 +146,24 @@ class RoomConfigRepository:
                 merged_system_prompt = config.system_prompt if config.system_prompt is not None else (existing.system_prompt if existing else None)
                 merged_slack_context_size = config.slack_context_size if config.slack_context_size is not None else (existing.slack_context_size if existing else None)
                 
-                # Use UPSERT that preserves created_at
-                conn.execute("""
-                    INSERT INTO room_configs 
-                    (room_id, assistant_list, system_prompt, slack_context_size, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, 
-                        COALESCE((SELECT created_at FROM room_configs WHERE room_id=?), CURRENT_TIMESTAMP), 
-                        CURRENT_TIMESTAMP)
-                    ON CONFLICT(room_id) DO UPDATE SET
-                        assistant_list=excluded.assistant_list,
-                        system_prompt=excluded.system_prompt,
-                        slack_context_size=excluded.slack_context_size,
-                        updated_at=CURRENT_TIMESTAMP
-                """, (config.room_id, merged_assistant_list, merged_system_prompt, merged_slack_context_size, config.room_id))
+                # Check if record exists
+                cursor = conn.execute("SELECT created_at FROM room_configs WHERE room_id = ?", (config.room_id,))
+                existing_row = cursor.fetchone()
+                
+                if existing_row:
+                    # Update existing record, preserving created_at
+                    conn.execute("""
+                        UPDATE room_configs 
+                        SET assistant_list=?, system_prompt=?, slack_context_size=?, updated_at=CURRENT_TIMESTAMP
+                        WHERE room_id=?
+                    """, (merged_assistant_list, merged_system_prompt, merged_slack_context_size, config.room_id))
+                else:
+                    # Insert new record
+                    conn.execute("""
+                        INSERT INTO room_configs 
+                        (room_id, assistant_list, system_prompt, slack_context_size, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    """, (config.room_id, merged_assistant_list, merged_system_prompt, merged_slack_context_size))
                 conn.commit()
                 
                 logger.info("Saved room config for room %s", config.room_id)
