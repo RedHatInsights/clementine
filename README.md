@@ -274,7 +274,7 @@ Examples:
 - Default: Uses `SLACK_MIN_CONTEXT` value (50 messages)
 - Per-channel: Configure via `/clementine config` within the min/max bounds
 - Global limits: Set by `SLACK_MIN_CONTEXT` and `SLACK_MAX_CONTEXT` environment variables
-- Larger context provides more comprehensive analysis but may be slower
+- Larger context provides more comprehensive analysis but may increase API usage/cost and latency
 
 ## Monitoring and Troubleshooting
 
