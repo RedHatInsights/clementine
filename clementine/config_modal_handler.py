@@ -209,12 +209,11 @@ class ConfigModalHandler:
             "type": "input",
             "block_id": "slack_context_size_block",
             "element": {
-                "type": "plain_text_input",
+                "type": "number_input",
                 "action_id": "slack_context_size_input",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": f"Enter value between {config['slack_min_context']} and {config['slack_max_context']}"
-                },
+                "is_decimal_allowed": False,
+                "min_value": str(config['slack_min_context']),
+                "max_value": str(config['slack_max_context']),
                 "initial_value": str(config["slack_context_size"])
             },
             "label": {

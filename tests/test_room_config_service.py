@@ -382,3 +382,103 @@ class TestRoomConfigService:
         assert config.assistant_list == ["default"]
         assert config.system_prompt == "Default"
         mock_logger.error.assert_called_once()
+    
+    def test_slack_context_size_bounds_clamping_above_max(self):
+        """Test that stored values above max get clamped down."""
+        mock_repo = Mock()
+        # Return a config with slack_context_size way above the max limit
+        mock_repo.get_room_config.return_value = RoomConfig(
+            room_id="test_room",
+            assistant_list='["assistant"]',
+            system_prompt="Prompt",
+            slack_context_size=99999  # Way above max of 250
+        )
+        
+        service = RoomConfigService(
+            repository=mock_repo,
+            default_assistants=["default"],
+            default_prompt="Default",
+            default_slack_context=50,
+            slack_min_context=50,
+            slack_max_context=250
+        )
+        
+        config = service.get_room_config("test_room")
+        
+        # Should be clamped to max value
+        assert config.slack_context_size == 250
+    
+    def test_slack_context_size_bounds_clamping_below_min(self):
+        """Test that stored values below min get clamped up."""
+        mock_repo = Mock()
+        # Return a config with slack_context_size below the min limit
+        mock_repo.get_room_config.return_value = RoomConfig(
+            room_id="test_room",
+            assistant_list='["assistant"]',
+            system_prompt="Prompt",
+            slack_context_size=10  # Below min of 50
+        )
+        
+        service = RoomConfigService(
+            repository=mock_repo,
+            default_assistants=["default"],
+            default_prompt="Default",
+            default_slack_context=50,
+            slack_min_context=50,
+            slack_max_context=250
+        )
+        
+        config = service.get_room_config("test_room")
+        
+        # Should be clamped to min value
+        assert config.slack_context_size == 50
+    
+    def test_slack_context_size_within_bounds_preserved(self):
+        """Test that stored values within bounds are preserved."""
+        mock_repo = Mock()
+        # Return a config with slack_context_size within bounds
+        mock_repo.get_room_config.return_value = RoomConfig(
+            room_id="test_room",
+            assistant_list='["assistant"]',
+            system_prompt="Prompt",
+            slack_context_size=100  # Within bounds of 50-250
+        )
+        
+        service = RoomConfigService(
+            repository=mock_repo,
+            default_assistants=["default"],
+            default_prompt="Default",
+            default_slack_context=50,
+            slack_min_context=50,
+            slack_max_context=250
+        )
+        
+        config = service.get_room_config("test_room")
+        
+        # Should be preserved as-is
+        assert config.slack_context_size == 100
+    
+    def test_slack_context_size_edge_case_extreme_bounds(self):
+        """Test edge case with stored value beyond reasonable limits."""
+        mock_repo = Mock()
+        # Return a config with an extremely large value (like old corrupted data)
+        mock_repo.get_room_config.return_value = RoomConfig(
+            room_id="test_room",
+            assistant_list='["assistant"]',
+            system_prompt="Prompt",
+            slack_context_size=999999999  # Extreme value
+        )
+        
+        service = RoomConfigService(
+            repository=mock_repo,
+            default_assistants=["default"],
+            default_prompt="Default",
+            default_slack_context=75,
+            slack_min_context=25,
+            slack_max_context=500
+        )
+        
+        config = service.get_room_config("test_room")
+        
+        # Should be clamped to the service's max bound
+        assert config.slack_context_size == 500

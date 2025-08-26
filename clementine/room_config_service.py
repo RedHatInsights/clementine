@@ -19,7 +19,8 @@ class ProcessedRoomConfig:
     slack_context_size: int
     
     @classmethod
-    def from_room_config(cls, config: RoomConfig, default_assistants: List[str], default_prompt: str, default_slack_context: int) -> 'ProcessedRoomConfig':
+    def from_room_config(cls, config: RoomConfig, default_assistants: List[str], default_prompt: str, 
+                        default_slack_context: int, slack_min_context: int, slack_max_context: int) -> 'ProcessedRoomConfig':
         """Create ProcessedRoomConfig from RoomConfig with defaults."""
         # Parse assistant list from JSON string
         assistants = default_assistants
@@ -46,11 +47,16 @@ class ProcessedRoomConfig:
             prompt = default_prompt
             logger.warning("Empty system prompt for room %s, using default", config.room_id)
         
-        # Use custom slack context size or default
+        # Use custom slack context size or default, with bounds clamping
         slack_context = default_slack_context
         if config.slack_context_size is not None and isinstance(config.slack_context_size, int):
             if config.slack_context_size > 0:
-                slack_context = config.slack_context_size
+                # Clamp stored value to global min/max bounds
+                clamped_size = max(slack_min_context, min(config.slack_context_size, slack_max_context))
+                if clamped_size != config.slack_context_size:
+                    logger.warning("Slack context size %d for room %s is out of bounds [%d-%d], clamping to %d", 
+                                 config.slack_context_size, config.room_id, slack_min_context, slack_max_context, clamped_size)
+                slack_context = clamped_size
             else:
                 logger.warning("Invalid slack context size for room %s, using default", config.room_id)
         
@@ -81,7 +87,8 @@ class RoomConfigService:
             
             if config:
                 logger.debug("Using custom configuration for room %s", room_id)
-                return ProcessedRoomConfig.from_room_config(config, self.default_assistants, self.default_prompt, self.default_slack_context)
+                return ProcessedRoomConfig.from_room_config(config, self.default_assistants, self.default_prompt, 
+                                                          self.default_slack_context, self.slack_min_context, self.slack_max_context)
             else:
                 logger.debug("Using default configuration for room %s", room_id)
                 return ProcessedRoomConfig(

@@ -113,14 +113,33 @@ class RoomConfigRepository:
             raise
     
     def save_room_config(self, config: RoomConfig) -> bool:
-        """Save or update room configuration."""
+        """Save or update room configuration with merge semantics.
+        
+        Only updates fields that are not None, preserving existing values for other fields.
+        """
         try:
             with self._get_connection() as conn:
+                # Load existing configuration to merge with
+                existing = self.get_room_config(config.room_id)
+                
+                # Merge new values with existing, keeping existing for None values
+                merged_assistant_list = config.assistant_list if config.assistant_list is not None else (existing.assistant_list if existing else None)
+                merged_system_prompt = config.system_prompt if config.system_prompt is not None else (existing.system_prompt if existing else None)
+                merged_slack_context_size = config.slack_context_size if config.slack_context_size is not None else (existing.slack_context_size if existing else None)
+                
+                # Use UPSERT that preserves created_at
                 conn.execute("""
-                    INSERT OR REPLACE INTO room_configs 
-                    (room_id, assistant_list, system_prompt, slack_context_size, updated_at)
-                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-                """, (config.room_id, config.assistant_list, config.system_prompt, config.slack_context_size))
+                    INSERT INTO room_configs 
+                    (room_id, assistant_list, system_prompt, slack_context_size, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, 
+                        COALESCE((SELECT created_at FROM room_configs WHERE room_id=?), CURRENT_TIMESTAMP), 
+                        CURRENT_TIMESTAMP)
+                    ON CONFLICT(room_id) DO UPDATE SET
+                        assistant_list=excluded.assistant_list,
+                        system_prompt=excluded.system_prompt,
+                        slack_context_size=excluded.slack_context_size,
+                        updated_at=CURRENT_TIMESTAMP
+                """, (config.room_id, merged_assistant_list, merged_system_prompt, merged_slack_context_size, config.room_id))
                 conn.commit()
                 
                 logger.info("Saved room config for room %s", config.room_id)
