@@ -6,7 +6,7 @@ Clementine is a Slack bot that provides AI-powered assistance by integrating wit
 
 - **AI Assistant**: Responds to @mentions with intelligent answers using configurable AI assistants
 - **Slack Context Analysis**: Analyze channel conversations with `/clementine slack <question>` command
-- **Room Configuration**: Per-channel configuration for assistants and prompts
+- **Room Configuration**: Per-channel configuration for assistants, prompts, and context size
 - **User Feedback**: Like/dislike buttons for response quality feedback
 - **AI Disclosure**: Optional disclaimers for AI-generated content
 - **Health Monitoring**: Built-in health checks for container deployments
@@ -49,6 +49,10 @@ Clementine is a Slack bot that provides AI-powered assistance by integrating wit
    # Required Tangerine API Configuration
    TANGERINE_API_URL=https://your-tangerine-api.example.com
    TANGERINE_API_TOKEN=your-tangerine-api-token-here
+   
+   # Optional: Slack Context Configuration
+   SLACK_MIN_CONTEXT=50
+   SLACK_MAX_CONTEXT=250
    ```
 
 3. **Run locally:**
@@ -98,6 +102,8 @@ pytest --cov=clementine  # With coverage
 | `AI_DISCLOSURE_ENABLED` | `true` | Whether to show AI disclosure messages |
 | `AI_DISCLOSURE_TEXT` | Standard text | Text shown in AI disclosure |
 | `FEEDBACK_ENABLED` | `true` | Whether to enable user feedback buttons |
+| `SLACK_MIN_CONTEXT` | `50` | Minimum number of messages for Slack context analysis |
+| `SLACK_MAX_CONTEXT` | `250` | Maximum number of messages for Slack context analysis |
 
 ## Slack App Configuration
 
@@ -230,6 +236,8 @@ docker run -d \
   -e SLACK_APP_TOKEN="xapp-your-token" \
   -e TANGERINE_API_URL="https://api.example.com" \
   -e TANGERINE_API_TOKEN="your-api-token" \
+  -e SLACK_MIN_CONTEXT="50" \
+  -e SLACK_MAX_CONTEXT="250" \
   your-registry.example.com/clementine:latest
 ```
 
@@ -246,18 +254,27 @@ docker run -d \
 Each channel can have its own:
 - **Assistants**: Which AI assistants to use
 - **Custom Prompt**: Channel-specific system prompt
+- **Slack Context Size**: Number of messages to analyze (between min/max limits)
 - **Settings**: Override default bot behavior
 
 Use `/clementine config` to open the configuration modal.
 
 ### Context Questions
 
-The bot can analyze recent channel conversations:
+The bot can analyze recent channel conversations using the `/clementine slack` command. The number of messages analyzed is configurable per channel and defaults to the minimum context size (50 messages).
+
+Examples:
 ```
 /clementine slack what are andrew and psav talking about re: clowder
 /clementine slack summarize today's discussion about the deployment
 /clementine slack what was the main decision made in this thread?
 ```
+
+**Context Size Configuration:**
+- Default: Uses `SLACK_MIN_CONTEXT` value (50 messages)
+- Per-channel: Configure via `/clementine config` within the min/max bounds
+- Global limits: Set by `SLACK_MIN_CONTEXT` and `SLACK_MAX_CONTEXT` environment variables
+- Larger context provides more comprehensive analysis but may increase API usage/cost and latency
 
 ## Monitoring and Troubleshooting
 

@@ -74,22 +74,8 @@ DEFAULT_PROMPT = os.getenv("DEFAULT_PROMPT", "You are a helpful assistant.")
 TANGERINE_API_URL = os.getenv("TANGERINE_API_URL", "").rstrip('/')  # Remove trailing slash
 TANGERINE_API_TOKEN = os.getenv("TANGERINE_API_TOKEN")
 
-# Validate timeout value with proper error handling
-def get_timeout_value() -> int:
-    """Get and validate the API timeout value from environment."""
-    timeout_str = os.getenv("TANGERINE_API_TIMEOUT", "500")
-    try:
-        timeout_value = int(timeout_str)
-        if timeout_value <= 0:
-            logger.warning("Invalid timeout value %d, must be positive. Using default 500.", timeout_value)
-            return 500
-        if timeout_value > 3600:  # 1 hour max
-            logger.warning("Timeout value %d too large, capping at 3600 seconds.", timeout_value)
-            return 3600
-        return timeout_value
-    except ValueError:
-        logger.error("Invalid timeout value '%s', must be a number. Using default 500.", timeout_str)
-        return 500
+# Import configuration functions
+from clementine.app_config import get_timeout_value
 
 TANGERINE_API_TIMEOUT = get_timeout_value()
 logger.info("Using Tangerine API timeout: %d seconds", TANGERINE_API_TIMEOUT)
@@ -97,6 +83,12 @@ logger.info("Using Tangerine API timeout: %d seconds", TANGERINE_API_TIMEOUT)
 # Room Configuration Database
 ROOM_CONFIG_DB_PATH = os.getenv("ROOM_CONFIG_DB_PATH", "room_configs.db")
 logger.info("Using room configuration database path: %s", ROOM_CONFIG_DB_PATH)
+
+# Import configuration functions
+from clementine.app_config import get_slack_context_limits
+
+SLACK_MIN_CONTEXT, SLACK_MAX_CONTEXT = get_slack_context_limits()
+logger.info("Using Slack context limits: min=%d, max=%d", SLACK_MIN_CONTEXT, SLACK_MAX_CONTEXT)
 
 # AI Disclosure Configuration
 AI_DISCLOSURE_ENABLED = os.getenv("AI_DISCLOSURE_ENABLED", "true").lower() == "true"
@@ -128,7 +120,10 @@ room_config_repository = RoomConfigRepository(db_path=ROOM_CONFIG_DB_PATH)
 room_config_service = RoomConfigService(
     repository=room_config_repository,
     default_assistants=ASSISTANT_LIST,
-    default_prompt=DEFAULT_PROMPT
+    default_prompt=DEFAULT_PROMPT,
+    default_slack_context=SLACK_MIN_CONTEXT,
+    slack_min_context=SLACK_MIN_CONTEXT,
+    slack_max_context=SLACK_MAX_CONTEXT
 )
 config_modal_handler = ConfigModalHandler(room_config_service, slack_client, tangerine_client)
 
@@ -179,6 +174,7 @@ slack_question_bot = SlackQuestionBot(
     context_extractor=slack_context_extractor,
     advanced_chat_client=advanced_chat_client,
     bot_name=BOT_NAME,
+    room_config_service=room_config_service,
     formatter=formatter
     # Uses DEFAULT_SLACK_ANALYSIS_PROMPT by default (designed for Slack conversation analysis)
 )

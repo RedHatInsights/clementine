@@ -164,7 +164,8 @@ class TestClementineBot:
         mock_room_config_service.get_room_config.return_value = ProcessedRoomConfig(
             room_id="C456",
             assistant_list=["custom_assistant"],
-            system_prompt="Custom prompt"
+            system_prompt="Custom prompt",
+            slack_context_size=50
         )
         
         mock_web_client = Mock(spec=WebClient)

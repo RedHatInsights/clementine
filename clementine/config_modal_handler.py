@@ -196,6 +196,33 @@ class ConfigModalHandler:
             "optional": True
         })
         
+        # Slack context size configuration
+        blocks.append({
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*Slack Context Size*\nNumber of messages to analyze (range: {config['slack_min_context']}-{config['slack_max_context']})"
+            }
+        })
+        
+        blocks.append({
+            "type": "input",
+            "block_id": "slack_context_size_block",
+            "element": {
+                "type": "number_input",
+                "action_id": "slack_context_size_input",
+                "is_decimal_allowed": False,
+                "min_value": str(config['slack_min_context']),
+                "max_value": str(config['slack_max_context']),
+                "initial_value": str(config["slack_context_size"])
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Context Size"
+            },
+            "optional": True
+        })
+        
         # Reset option
         if config["has_custom_config"]:
             blocks.append({
@@ -281,6 +308,17 @@ class ConfigModalHandler:
         if prompt_value:
             form_values["system_prompt"] = prompt_value
         
+        # Extract slack context size
+        context_size_block = state_values.get("slack_context_size_block", {})
+        context_size_input = context_size_block.get("slack_context_size_input", {})
+        context_size_value = context_size_input.get("value", "").strip()
+        if context_size_value:
+            try:
+                form_values["slack_context_size"] = int(context_size_value)
+            except ValueError:
+                # Invalid number will be caught in validation
+                form_values["slack_context_size"] = context_size_value
+        
         # Check for reset option
         reset_section = state_values.get("reset_to_defaults", {})
         if reset_section:
@@ -319,12 +357,28 @@ class ConfigModalHandler:
             if len(system_prompt) > 5000:  # 5KB limit
                 errors["system_prompt_block"] = "System prompt is too long (max 5000 characters)"
         
+        # Validate slack context size
+        slack_context_size = form_values.get("slack_context_size")
+        if slack_context_size is not None:
+            if not isinstance(slack_context_size, int):
+                errors["slack_context_size_block"] = "Context size must be a valid number"
+            else:
+                # Get current config to check min/max bounds
+                current_config = self.room_config_service.get_current_config_for_display(room_id)
+                min_context = current_config["slack_min_context"]
+                max_context = current_config["slack_max_context"]
+                
+                if slack_context_size < min_context:
+                    errors["slack_context_size_block"] = f"Context size must be at least {min_context}"
+                elif slack_context_size > max_context:
+                    errors["slack_context_size_block"] = f"Context size must be at most {max_context}"
+        
         # If we have validation errors, return them
         if errors:
             return {"success": False, "errors": errors}
         
         # Check if we actually have something to save
-        if assistant_list is None and system_prompt is None:
+        if assistant_list is None and system_prompt is None and slack_context_size is None:
             errors["general"] = "Please provide at least one configuration value"
             return {"success": False, "errors": errors}
         
@@ -332,7 +386,8 @@ class ConfigModalHandler:
         success = self.room_config_service.save_room_config(
             room_id=room_id,
             assistant_list=assistant_list,
-            system_prompt=system_prompt
+            system_prompt=system_prompt,
+            slack_context_size=slack_context_size
         )
         
         if not success:

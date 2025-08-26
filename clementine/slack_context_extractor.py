@@ -38,23 +38,25 @@ class SlackContextExtractor:
         self.max_messages = max_messages
         self._user_name_cache = {}  # Cache user names to avoid repeated API calls
     
-    def extract_thread_context(self, channel: str, thread_ts: str) -> List[str]:
+    def extract_thread_context(self, channel: str, thread_ts: str, limit: Optional[int] = None) -> List[str]:
         """Extract context from a specific thread.
         
         Args:
             channel: Slack channel ID
             thread_ts: Thread timestamp
+            limit: Maximum number of messages to retrieve (defaults to max_messages)
             
         Returns:
             List of context strings suitable for LLM consumption
         """
         try:
-            logger.debug("Extracting thread context for channel %s, thread %s", channel, thread_ts)
+            limit = limit or self.max_messages
+            logger.debug("Extracting thread context for channel %s, thread %s, limit %d", channel, thread_ts, limit)
             
             response = self.client.conversations_replies(
                 channel=channel,
                 ts=thread_ts,
-                limit=self.max_messages
+                limit=limit
             )
             
             messages = response.get("messages", [])

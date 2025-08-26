@@ -16,9 +16,11 @@ class ProcessedRoomConfig:
     room_id: str
     assistant_list: List[str]
     system_prompt: str
+    slack_context_size: int
     
     @classmethod
-    def from_room_config(cls, config: RoomConfig, default_assistants: List[str], default_prompt: str) -> 'ProcessedRoomConfig':
+    def from_room_config(cls, config: RoomConfig, default_assistants: List[str], default_prompt: str, 
+                        default_slack_context: int, slack_min_context: int, slack_max_context: int) -> 'ProcessedRoomConfig':
         """Create ProcessedRoomConfig from RoomConfig with defaults."""
         # Parse assistant list from JSON string
         assistants = default_assistants
@@ -45,20 +47,38 @@ class ProcessedRoomConfig:
             prompt = default_prompt
             logger.warning("Empty system prompt for room %s, using default", config.room_id)
         
+        # Use custom slack context size or default, with bounds clamping
+        slack_context = default_slack_context
+        if config.slack_context_size is not None and isinstance(config.slack_context_size, int):
+            if config.slack_context_size > 0:
+                # Clamp stored value to global min/max bounds
+                clamped_size = max(slack_min_context, min(config.slack_context_size, slack_max_context))
+                if clamped_size != config.slack_context_size:
+                    logger.warning("Slack context size %d for room %s is out of bounds [%d-%d], clamping to %d", 
+                                 config.slack_context_size, config.room_id, slack_min_context, slack_max_context, clamped_size)
+                slack_context = clamped_size
+            else:
+                logger.warning("Invalid slack context size for room %s, using default", config.room_id)
+        
         return cls(
             room_id=config.room_id,
             assistant_list=assistants,
-            system_prompt=prompt
+            system_prompt=prompt,
+            slack_context_size=slack_context
         )
 
 
 class RoomConfigService:
     """Service for managing room configurations with validation and business logic."""
     
-    def __init__(self, repository: RoomConfigRepository, default_assistants: List[str], default_prompt: str):
+    def __init__(self, repository: RoomConfigRepository, default_assistants: List[str], default_prompt: str, 
+                 default_slack_context: int, slack_min_context: int, slack_max_context: int):
         self.repository = repository
         self.default_assistants = default_assistants
         self.default_prompt = default_prompt
+        self.default_slack_context = default_slack_context
+        self.slack_min_context = slack_min_context
+        self.slack_max_context = slack_max_context
     
     def get_room_config(self, room_id: str) -> ProcessedRoomConfig:
         """Get processed room configuration with fallback to defaults."""
@@ -67,24 +87,27 @@ class RoomConfigService:
             
             if config:
                 logger.debug("Using custom configuration for room %s", room_id)
-                return ProcessedRoomConfig.from_room_config(config, self.default_assistants, self.default_prompt)
+                return ProcessedRoomConfig.from_room_config(config, self.default_assistants, self.default_prompt, 
+                                                          self.default_slack_context, self.slack_min_context, self.slack_max_context)
             else:
                 logger.debug("Using default configuration for room %s", room_id)
                 return ProcessedRoomConfig(
                     room_id=room_id,
                     assistant_list=self.default_assistants,
-                    system_prompt=self.default_prompt
+                    system_prompt=self.default_prompt,
+                    slack_context_size=self.default_slack_context
                 )
         except Exception as e:
             logger.error("Error getting room config for %s, using defaults: %s", room_id, e)
             return ProcessedRoomConfig(
                 room_id=room_id,
                 assistant_list=self.default_assistants,
-                system_prompt=self.default_prompt
+                system_prompt=self.default_prompt,
+                slack_context_size=self.default_slack_context
             )
     
     def save_room_config(self, room_id: str, assistant_list: Optional[List[str]] = None, 
-                        system_prompt: Optional[str] = None) -> bool:
+                        system_prompt: Optional[str] = None, slack_context_size: Optional[int] = None) -> bool:
         """Save room configuration with validation."""
         try:
             # Validate and process assistant list
@@ -103,15 +126,23 @@ class RoomConfigService:
                 if not validated_prompt:
                     logger.warning("Invalid system prompt provided for room %s, ignoring", room_id)
             
+            # Validate slack context size
+            validated_slack_context = None
+            if slack_context_size is not None:
+                validated_slack_context = self._validate_slack_context_size(slack_context_size)
+                if validated_slack_context is None:
+                    logger.warning("Invalid slack context size provided for room %s, ignoring", room_id)
+            
             # Only save if we have something to save
-            if assistants_json is None and validated_prompt is None:
+            if assistants_json is None and validated_prompt is None and validated_slack_context is None:
                 logger.warning("No valid configuration provided for room %s", room_id)
                 return False
             
             config = RoomConfig(
                 room_id=room_id,
                 assistant_list=assistants_json,
-                system_prompt=validated_prompt
+                system_prompt=validated_prompt,
+                slack_context_size=validated_slack_context
             )
             
             success = self.repository.save_room_config(config)
@@ -159,6 +190,22 @@ class RoomConfigService:
         
         return None
     
+    def _validate_slack_context_size(self, slack_context_size: int) -> Optional[int]:
+        """Validate slack context size within min/max bounds."""
+        if not isinstance(slack_context_size, int):
+            return None
+        
+        # Ensure the value is within the configured min/max bounds
+        if slack_context_size < self.slack_min_context:
+            logger.warning("Slack context size %d is below minimum %d", slack_context_size, self.slack_min_context)
+            return None
+        
+        if slack_context_size > self.slack_max_context:
+            logger.warning("Slack context size %d is above maximum %d", slack_context_size, self.slack_max_context)
+            return None
+        
+        return slack_context_size
+    
     def get_current_config_for_display(self, room_id: str) -> Dict[str, Any]:
         """Get current room configuration formatted for display in UI."""
         config = self.get_room_config(room_id)
@@ -171,6 +218,9 @@ class RoomConfigService:
             "room_id": room_id,
             "assistant_list": config.assistant_list,
             "system_prompt": config.system_prompt,
+            "slack_context_size": config.slack_context_size,
+            "slack_min_context": self.slack_min_context,
+            "slack_max_context": self.slack_max_context,
             "has_custom_config": has_custom_config,
             "assistant_list_json": json.dumps(config.assistant_list),  # For form display
         }
