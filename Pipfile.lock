@@ -137,12 +137,12 @@
         },
         "slack-bolt": {
             "hashes": [
-                "sha256:3d2c3eb13131407a94f925eb22b180d352c2d97b808303ef92b7a46d6508c843",
-                "sha256:6d6ae39d80c964c362505ae4e587eed2b26dbc3a9f0cb76af1150c30fb670488"
+                "sha256:10245bac8b6768434885cc6e896a91daf815f1f566e83c0ddb6ad846d838248e",
+                "sha256:203249338454d3c8d096a6a1f4ebe09f48da2f572268835d1c5ed2a64eae898d"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.6'",
-            "version": "==1.23.0"
+            "version": "==1.24.0"
         },
         "slack-sdk": {
             "hashes": [
