@@ -380,7 +380,6 @@ objects:
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
-            runAsUser: 1001
             readOnlyRootFilesystem: true
             capabilities:
               drop:
@@ -389,8 +388,6 @@ objects:
         # Pod security context
         securityContext:
           runAsNonRoot: true
-          runAsUser: 1001
-          fsGroup: 1001
         
         # Volumes
         volumes:
