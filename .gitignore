@@ -12,3 +12,5 @@ htmlcov/
 .env.local
 
 room_configs.db
+
+deploy/parameters.env
