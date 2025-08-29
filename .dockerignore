@@ -10,6 +10,8 @@ __pycache__/
 .Python
 *.so
 
+deploy/parameters.env
+
 # Virtual environments
 .env
 .venv
