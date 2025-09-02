@@ -246,17 +246,17 @@ objects:
           - name: SLACK_BOT_TOKEN
             valueFrom:
               secretKeyRef:
-                name: "${APP_NAME}-secrets"
+                name: "${APP_NAME}"
                 key: slack-bot-token
           - name: SLACK_SIGNING_SECRET
             valueFrom:
               secretKeyRef:
-                name: "${APP_NAME}-secrets"
+                name: "${APP_NAME}"
                 key: slack-signing-secret
           - name: SLACK_APP_TOKEN
             valueFrom:
               secretKeyRef:
-                name: "${APP_NAME}-secrets"
+                name: "${APP_NAME}"
                 key: slack-app-token
           - name: TANGERINE_API_TOKEN
             valueFrom:
