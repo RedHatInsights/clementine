@@ -168,20 +168,6 @@ parameters:
   required: false
 
 objects:
-# Secret for sensitive configuration
-- apiVersion: v1
-  kind: Secret
-  metadata:
-    name: "${APP_NAME}-secrets"
-    labels:
-      app: "${APP_NAME}"
-  type: Opaque
-  stringData:
-    slack-bot-token: "${SLACK_BOT_TOKEN}"
-    slack-signing-secret: "${SLACK_SIGNING_SECRET}"
-    slack-app-token: "${SLACK_APP_TOKEN}"
-    tangerine-api-token: "${TANGERINE_API_TOKEN}"
-
 # ConfigMap for non-sensitive configuration
 - apiVersion: v1
   kind: ConfigMap
@@ -261,7 +247,7 @@ objects:
           - name: TANGERINE_API_TOKEN
             valueFrom:
               secretKeyRef:
-                name: "${APP_NAME}-secrets"
+                name: "${APP_NAME}"
                 key: TANGERINE_API_TOKEN
           
           # Environment variables from config map
