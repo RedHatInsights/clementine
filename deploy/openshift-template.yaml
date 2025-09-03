@@ -247,22 +247,22 @@ objects:
             valueFrom:
               secretKeyRef:
                 name: "${APP_NAME}"
-                key: slack-bot-token
+                key: SLACK_BOT_TOKEN
           - name: SLACK_SIGNING_SECRET
             valueFrom:
               secretKeyRef:
                 name: "${APP_NAME}"
-                key: slack-signing-secret
+                key: SLACK_SIGNING_SECRET
           - name: SLACK_APP_TOKEN
             valueFrom:
               secretKeyRef:
                 name: "${APP_NAME}"
-                key: slack-app-token
+                key: SLACK_APP_TOKEN
           - name: TANGERINE_API_TOKEN
             valueFrom:
               secretKeyRef:
                 name: "${APP_NAME}-secrets"
-                key: tangerine-api-token
+                key: TANGERINE_API_TOKEN
           
           # Environment variables from config map
           - name: TANGERINE_API_URL
