@@ -30,7 +30,9 @@ class TestSlackQuestionBot:
     @pytest.fixture
     def mock_advanced_chat_client(self):
         """Create mock AdvancedChatClient."""
-        return Mock(spec=AdvancedChatClient)
+        mock_client = Mock(spec=AdvancedChatClient)
+        mock_client.model_override = None  # Default to None
+        return mock_client
     
     @pytest.fixture
     def mock_formatter(self):
@@ -294,3 +296,49 @@ class TestSlackQuestionBot:
         
         # Should use channel as fallback for session ID
         mock_generate_session_id.assert_called_once_with("C123456", "C123456")
+    
+    def test_model_override_passed_to_chunks_request(self, bot, mock_advanced_chat_client, mock_context_extractor):
+        """Test that model_override is properly passed to ChunksRequest."""
+        # Setup mock with model override
+        mock_advanced_chat_client.model_override = "chatgpt-4o"
+        mock_context_extractor.extract_thread_context.return_value = ["Test context"]
+        
+        mock_response = TangerineResponse(text="Response", metadata=[], interaction_id="123")
+        mock_advanced_chat_client.chat_with_chunks.return_value = mock_response
+        
+        # Call the method
+        bot._get_chat_response(
+            question="Test question",
+            context_chunks=["Test context"],
+            channel="C123456",
+            thread_ts="1234567890.123"
+        )
+        
+        # Verify the ChunksRequest includes the model override
+        mock_advanced_chat_client.chat_with_chunks.assert_called_once()
+        call_args = mock_advanced_chat_client.chat_with_chunks.call_args[0][0]
+        assert isinstance(call_args, ChunksRequest)
+        assert call_args.model == "chatgpt-4o"
+    
+    def test_model_override_none_not_passed_to_chunks_request(self, bot, mock_advanced_chat_client, mock_context_extractor):
+        """Test that None model_override is not passed to ChunksRequest."""
+        # Setup mock with no model override
+        mock_advanced_chat_client.model_override = None
+        mock_context_extractor.extract_thread_context.return_value = ["Test context"]
+        
+        mock_response = TangerineResponse(text="Response", metadata=[], interaction_id="123")
+        mock_advanced_chat_client.chat_with_chunks.return_value = mock_response
+        
+        # Call the method
+        bot._get_chat_response(
+            question="Test question",
+            context_chunks=["Test context"],
+            channel="C123456",
+            thread_ts="1234567890.123"
+        )
+        
+        # Verify the ChunksRequest model is None
+        mock_advanced_chat_client.chat_with_chunks.assert_called_once()
+        call_args = mock_advanced_chat_client.chat_with_chunks.call_args[0][0]
+        assert isinstance(call_args, ChunksRequest)
+        assert call_args.model is None

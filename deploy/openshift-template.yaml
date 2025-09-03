@@ -100,6 +100,12 @@ parameters:
   value: "500"
   required: false
 
+- name: MODEL_OVERRIDE
+  displayName: "Model Override"
+  description: "Override model for Tangerine API requests (optional)"
+  value: ""
+  required: false
+
 - name: ROOM_CONFIG_DB_PATH
   displayName: "Database Path"
   description: "Path to room configuration database"
@@ -184,6 +190,7 @@ objects:
     assistant-list: "${ASSISTANT_LIST}"
     default-prompt: "${DEFAULT_PROMPT}"
     tangerine-api-timeout: "${TANGERINE_API_TIMEOUT}"
+    model-override: "${MODEL_OVERRIDE}"
     room-config-db-path: "${ROOM_CONFIG_DB_PATH}"
     ai-disclosure-enabled: "${AI_DISCLOSURE_ENABLED}"
     ai-disclosure-text: "${AI_DISCLOSURE_TEXT}"
@@ -291,6 +298,11 @@ objects:
               configMapKeyRef:
                 name: "${APP_NAME}-config"
                 key: tangerine-api-timeout
+          - name: MODEL_OVERRIDE
+            valueFrom:
+              configMapKeyRef:
+                name: "${APP_NAME}-config"
+                key: model-override
           - name: ROOM_CONFIG_DB_PATH
             valueFrom:
               configMapKeyRef:

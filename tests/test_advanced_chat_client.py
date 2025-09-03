@@ -53,6 +53,26 @@ class TestChunksRequest:
         assert payload["assistants"] == ["custom_assistant"]
         assert payload["prompt"] == "You are a helpful assistant."
         assert payload["disable_agentic"] is True
+        # Verify model is not included when not set
+        assert "model" not in payload
+    
+    def test_to_payload_with_model(self):
+        """Test converting request to API payload with model override."""
+        chunks_request = ChunksRequest(
+            query="Test question",
+            chunks=["chunk1"],
+            session_id="session-123",
+            client_name="test-client",
+            prompt="You are a helpful assistant.",
+            model="chatgpt-4o"
+        )
+        
+        payload = chunks_request.to_payload()
+        
+        assert payload["model"] == "chatgpt-4o"
+        assert payload["assistants"] == ["clowder"]  # Default assistant
+        assert payload["prompt"] == "You are a helpful assistant."
+        assert payload["disable_agentic"] is True
 
 
 class TestAdvancedChatClient:
@@ -74,6 +94,11 @@ class TestAdvancedChatClient:
         assert client.api_url == "https://api.example.com"
         assert client.api_token == "token"
         assert client.timeout == 500  # default
+        assert client.model_override is None  # default
+        
+        # Valid initialization with model override
+        client_with_model = AdvancedChatClient("https://api.example.com", "token", model_override="chatgpt-4o")
+        assert client_with_model.model_override == "chatgpt-4o"
         
         # Invalid parameters
         with pytest.raises(ValueError, match="Both api_url and api_token are required"):

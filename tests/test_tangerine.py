@@ -133,6 +133,41 @@ class TestTangerineClient:
         assert captured_payload["query"] == "Test query"
         assert captured_payload["prompt"] == "Test prompt"
         assert captured_payload["stream"] is False
+        
+        # Verify model is not included when no override is set
+        assert "model" not in captured_payload
+    
+    def test_chat_payload_includes_model_override(self):
+        """Test that chat payload includes model when override is set."""
+        captured_payload = {}
+        
+        def mock_make_request(payload):
+            captured_payload.update(payload)
+            return {
+                "text_content": "Test response with custom model",
+                "search_metadata": []
+            }
+        
+        client = TangerineClient("http://api.example.com", "token123", model_override="chatgpt-4o")
+        client._make_request = mock_make_request
+        
+        client.chat(
+            assistants=["assistant1"],
+            query="Test query",
+            session_id="session123",
+            client_name="TestBot",
+            prompt="Test prompt"
+        )
+        
+        # Verify model is included when override is set
+        assert "model" in captured_payload
+        assert captured_payload["model"] == "chatgpt-4o"
+        
+        # Verify other expected fields are still present
+        assert captured_payload["assistants"] == ["assistant1"]
+        assert captured_payload["query"] == "Test query"
+        assert captured_payload["prompt"] == "Test prompt"
+        assert captured_payload["disable_agentic"] is True
     
     def test_initialization_validation(self):
         """Test client initialization validation."""

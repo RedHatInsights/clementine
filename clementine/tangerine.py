@@ -44,13 +44,14 @@ class TangerineResponse:
 class TangerineClient:
     """Handles communication with the Tangerine API."""
     
-    def __init__(self, api_url: str, api_token: str, timeout: int = 500):
+    def __init__(self, api_url: str, api_token: str, timeout: int = 500, model_override: str = None):
         if not api_url or not api_token:
             raise ValueError("Both api_url and api_token are required")
         
         self.api_url = api_url.rstrip('/')  # Remove trailing slash
         self.api_token = api_token
         self.timeout = timeout
+        self.model_override = model_override
         self.chat_endpoint = f"{self.api_url}/api/assistants/chat"
         self.assistants_endpoint = f"{self.api_url}/api/assistants"
     
@@ -103,7 +104,7 @@ class TangerineClient:
     def _build_payload(self, assistants: List[str], query: str, session_id: str, 
                       client_name: str, prompt: str) -> Dict:
         """Build API request payload."""
-        return {
+        payload = {
             "assistants": assistants,
             "query": query,
             "sessionId": session_id,
@@ -113,6 +114,12 @@ class TangerineClient:
             "prompt": prompt,
             "disable_agentic": True
         }
+        
+        # Add model override if configured
+        if self.model_override:
+            payload["model"] = self.model_override
+            
+        return payload
     
     def _make_request(self, payload: Dict) -> Dict:
         """Make HTTP request to Tangerine API with comprehensive error handling."""

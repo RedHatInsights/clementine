@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import patch
 import os
 
-from clementine.app_config import get_slack_context_limits, get_timeout_value
+from clementine.app_config import get_slack_context_limits, get_timeout_value, get_model_override
 
 
 class TestSlackContextLimits:
@@ -111,3 +111,37 @@ class TestTimeoutValue:
 
         timeout = get_timeout_value()
         assert timeout == 3600  # Capped at 1 hour
+
+
+class TestModelOverride:
+    """Test get_model_override function."""
+    
+    @patch.dict(os.environ, {'MODEL_OVERRIDE': 'chatgpt-4o'})
+    def test_valid_model_override(self):
+        """Test with valid model override."""
+        model = get_model_override()
+        assert model == "chatgpt-4o"
+    
+    @patch.dict(os.environ, {}, clear=True)
+    def test_missing_model_override_returns_none(self):
+        """Test that missing MODEL_OVERRIDE returns None."""
+        model = get_model_override()
+        assert model is None
+    
+    @patch.dict(os.environ, {'MODEL_OVERRIDE': ''})
+    def test_empty_model_override_returns_none(self):
+        """Test that empty MODEL_OVERRIDE returns None."""
+        model = get_model_override()
+        assert model is None
+    
+    @patch.dict(os.environ, {'MODEL_OVERRIDE': '   '})
+    def test_whitespace_only_model_override_returns_none(self):
+        """Test that whitespace-only MODEL_OVERRIDE returns None."""
+        model = get_model_override()
+        assert model is None
+    
+    @patch.dict(os.environ, {'MODEL_OVERRIDE': '  chatgpt-01  '})
+    def test_model_override_strips_whitespace(self):
+        """Test that model override value is stripped of whitespace."""
+        model = get_model_override()
+        assert model == "chatgpt-01"
