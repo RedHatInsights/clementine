@@ -75,10 +75,17 @@ TANGERINE_API_URL = os.getenv("TANGERINE_API_URL", "").rstrip('/')  # Remove tra
 TANGERINE_API_TOKEN = os.getenv("TANGERINE_API_TOKEN")
 
 # Import configuration functions
-from clementine.app_config import get_timeout_value
+from clementine.app_config import get_timeout_value, get_model_override
 
 TANGERINE_API_TIMEOUT = get_timeout_value()
 logger.info("Using Tangerine API timeout: %d seconds", TANGERINE_API_TIMEOUT)
+
+# Model Override Configuration
+MODEL_OVERRIDE = get_model_override()
+if MODEL_OVERRIDE:
+    logger.info("Model override configured: %s", MODEL_OVERRIDE)
+else:
+    logger.info("No model override configured - using Tangerine API default")
 
 # Room Configuration Database
 ROOM_CONFIG_DB_PATH = os.getenv("ROOM_CONFIG_DB_PATH", "room_configs.db")
@@ -109,7 +116,8 @@ logger.info("Initializing bot components")
 tangerine_client = TangerineClient(
     api_url=TANGERINE_API_URL,
     api_token=TANGERINE_API_TOKEN,
-    timeout=TANGERINE_API_TIMEOUT
+    timeout=TANGERINE_API_TIMEOUT,
+    model_override=MODEL_OVERRIDE
 )
 
 slack_client = SlackClient(app.client)
@@ -167,7 +175,8 @@ slack_context_extractor = SlackContextExtractor(app.client)
 advanced_chat_client = AdvancedChatClient(
     api_url=TANGERINE_API_URL,
     api_token=TANGERINE_API_TOKEN,
-    timeout=TANGERINE_API_TIMEOUT
+    timeout=TANGERINE_API_TIMEOUT,
+    model_override=MODEL_OVERRIDE
 )
 slack_question_bot = SlackQuestionBot(
     slack_client=slack_client,

@@ -140,7 +140,8 @@ class SlackQuestionBot:
             chunks=context_chunks,
             session_id=session_id,
             client_name=self.bot_name,
-            prompt=self.system_prompt
+            prompt=self.system_prompt,
+            model=self.advanced_chat_client.model_override
         )
         
         logger.debug("Requesting response from advanced chat API with %d chunks", 

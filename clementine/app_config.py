@@ -58,3 +58,16 @@ def get_timeout_value() -> int:
     except ValueError:
         logger.error("Invalid timeout value '%s', must be a number. Using default 500.", timeout_str)
         return 500
+
+
+def get_model_override() -> str | None:
+    """Get the model override value from environment."""
+    model_override = os.getenv("MODEL_OVERRIDE")
+    if model_override:
+        model_override = model_override.strip()
+        if not model_override:
+            logger.warning("MODEL_OVERRIDE is set but empty, ignoring")
+            return None
+        logger.info("Using model override: %s", model_override)
+        return model_override
+    return None

@@ -21,6 +21,7 @@ class ChunksRequest:
     client_name: str
     prompt: str
     assistants: List[str] = None
+    model: str = None
     
     def __post_init__(self):
         """Set default assistants if none provided."""
@@ -42,6 +43,10 @@ class ChunksRequest:
         
         # Always include assistants (API requires it)
         payload["assistants"] = self.assistants
+        
+        # Add model if specified
+        if self.model:
+            payload["model"] = self.model
             
         return payload
 
@@ -54,13 +59,14 @@ class AdvancedChatClient:
     It follows the single responsibility principle by only handling API communication.
     """
     
-    def __init__(self, api_url: str, api_token: str, timeout: int = 500):
+    def __init__(self, api_url: str, api_token: str, timeout: int = 500, model_override: str = None):
         if not api_url or not api_token:
             raise ValueError("Both api_url and api_token are required")
         
         self.api_url = api_url.rstrip('/')  # Remove trailing slash
         self.api_token = api_token
         self.timeout = timeout
+        self.model_override = model_override
         self.chat_endpoint = f"{self.api_url}/api/assistants/chat"
     
     def chat_with_chunks(self, chunks_request: ChunksRequest) -> TangerineResponse:

@@ -51,9 +51,10 @@ Clementine is a Slack bot that provides AI-powered assistance by integrating wit
    TANGERINE_API_URL=https://your-tangerine-api.example.com
    TANGERINE_API_TOKEN=your-tangerine-api-token-here
    
-   # Optional: Slack Context Configuration
+   # Optional: Advanced Configuration
    SLACK_MIN_CONTEXT=50
    SLACK_MAX_CONTEXT=250
+   MODEL_OVERRIDE=chatgpt-4o
    ```
 
 3. **Run locally:**
@@ -99,6 +100,7 @@ pytest --cov=clementine  # With coverage
 | `ASSISTANT_LIST` | `konflux` | Comma-separated list of available assistants |
 | `DEFAULT_PROMPT` | Generic prompt | Default system prompt for AI responses |
 | `TANGERINE_API_TIMEOUT` | `500` | API request timeout in seconds |
+| `MODEL_OVERRIDE` | (none) | Override model for all Tangerine API requests (e.g., `chatgpt-4o`) |
 | `ROOM_CONFIG_DB_PATH` | `room_configs.db` | Path to SQLite database file |
 | `AI_DISCLOSURE_ENABLED` | `true` | Whether to show AI disclosure messages |
 | `AI_DISCLOSURE_TEXT` | Standard text | Text shown in AI disclosure |
@@ -185,6 +187,9 @@ docker push your-registry.example.com/clementine:latest
    # Required Tangerine API Configuration
    TANGERINE_API_URL=https://your-tangerine-api.example.com
    TANGERINE_API_TOKEN=your-tangerine-api-token-here
+   
+   # Optional: Model Override
+   # MODEL_OVERRIDE=chatgpt-4o
    ```
 
 3. **Deploy using the script:**
@@ -239,6 +244,7 @@ docker run -d \
   -e TANGERINE_API_TOKEN="your-api-token" \
   -e SLACK_MIN_CONTEXT="50" \
   -e SLACK_MAX_CONTEXT="250" \
+  -e MODEL_OVERRIDE="chatgpt-4o" \
   your-registry.example.com/clementine:latest
 ```
 
@@ -276,6 +282,9 @@ Examples:
 - Per-channel: Configure via `/clementine config` within the min/max bounds
 - Global limits: Set by `SLACK_MIN_CONTEXT` and `SLACK_MAX_CONTEXT` environment variables
 - Larger context provides more comprehensive analysis but may increase API usage/cost and latency
+
+**Model Override:**
+When `MODEL_OVERRIDE` is set, all API requests to Tangerine will include the specified model. This is a global setting that applies to all chat requests, including both @mentions and context analysis. Leave unset to use the Tangerine API's default model selection.
 
 ## Monitoring and Troubleshooting
 
