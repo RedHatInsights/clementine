@@ -91,6 +91,7 @@ pytest --cov=clementine  # With coverage
 
 ### Optional Configuration
 
+
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
