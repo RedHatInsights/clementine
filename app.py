@@ -85,6 +85,13 @@ DEFAULT_PROMPT = prompts.system_prompt
 TANGERINE_API_URL = os.getenv("TANGERINE_API_URL", "").rstrip('/')  # Remove trailing slash
 TANGERINE_API_TOKEN = os.getenv("TANGERINE_API_TOKEN")
 
+# Documentation base URL for clickable source links
+DOC_BASE_URL = os.getenv("DOC_BASE_URL", "").rstrip('/')  # Remove trailing slash
+if DOC_BASE_URL:
+    logger.info("Documentation base URL configured: %s", DOC_BASE_URL)
+else:
+    logger.info("No documentation base URL configured - source links will use original format")
+
 # Import configuration functions
 from clementine.app_config import get_timeout_value, get_model_override
 
@@ -163,11 +170,12 @@ if AI_DISCLOSURE_ENABLED:
     formatter = BlockKitFormatter(
         ai_disclosure_enabled=AI_DISCLOSURE_ENABLED,
         ai_disclosure_text=AI_DISCLOSURE_TEXT,
-        feedback_enabled=FEEDBACK_ENABLED
+        feedback_enabled=FEEDBACK_ENABLED,
+        doc_base_url=DOC_BASE_URL
     )
     logger.info("Using Block Kit formatter with AI disclosure and feedback: %s", FEEDBACK_ENABLED)
 else:
-    formatter = MessageFormatter()
+    formatter = MessageFormatter(doc_base_url=DOC_BASE_URL)
     logger.info("Using plain text formatter (feedback not available with plain text)")
 
 clementine_bot = ClementineBot(

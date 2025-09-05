@@ -107,6 +107,7 @@ pytest --cov=clementine  # With coverage
 | `FEEDBACK_ENABLED` | `true` | Whether to enable user feedback buttons |
 | `SLACK_MIN_CONTEXT` | `50` | Minimum number of messages for Slack context analysis |
 | `SLACK_MAX_CONTEXT` | `250` | Maximum number of messages for Slack context analysis |
+| `DOC_BASE_URL` | (none) | Base URL for documentation links to make source citations clickable |
 
 ## Slack App Configuration
 
