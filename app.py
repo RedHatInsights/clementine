@@ -80,8 +80,8 @@ if not ASSISTANT_LIST:
     logger.warning("No valid assistants in ASSISTANT_LIST, using default: konflux")
     ASSISTANT_LIST = ["konflux"]
 
-# Use loaded system prompt as default, with environment variable override
-DEFAULT_PROMPT = os.getenv("DEFAULT_PROMPT", prompts.system_prompt)
+# Use loaded system prompt from file
+DEFAULT_PROMPT = prompts.system_prompt
 TANGERINE_API_URL = os.getenv("TANGERINE_API_URL", "").rstrip('/')  # Remove trailing slash
 TANGERINE_API_TOKEN = os.getenv("TANGERINE_API_TOKEN")
 

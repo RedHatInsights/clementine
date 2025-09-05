@@ -24,7 +24,6 @@ services:
       # LOG_LEVEL: "DEBUG"
       # BOT_NAME: "MyBot"
       # ASSISTANT_LIST: "konflux,other-assistant"
-      # DEFAULT_PROMPT: "You are a helpful AI assistant specialized in software development."
       # TANGERINE_API_TIMEOUT: "600"
       # MODEL_OVERRIDE: "chatgpt-4o"
       # AI_DISCLOSURE_ENABLED: "true"
