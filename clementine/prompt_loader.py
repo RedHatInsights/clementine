@@ -12,7 +12,7 @@ class Prompts(NamedTuple):
     """Container for loaded prompts."""
     system_prompt: str
     user_prompt: str
-    slack_analysis_user_prompt: str
+    slack_analysis_system_prompt: str
 
 
 class PromptLoader:
@@ -48,29 +48,24 @@ class PromptLoader:
         
         system_prompt_path = self.prompts_dir / "default_system_prompt.txt"
         user_prompt_path = self.prompts_dir / "default_user_prompt.txt"
-        slack_user_prompt_path = self.prompts_dir / "slack_analysis_user_prompt.txt"
+        slack_system_prompt_path = self.prompts_dir / "slack_analysis_system_prompt.txt"
         
         # Load system prompt
         system_prompt = self._load_prompt_file(system_prompt_path, "system prompt")
         
-        # Load user prompt
+        # Load user prompt (used by ALL code paths)
         user_prompt = self._load_prompt_file(user_prompt_path, "user prompt")
         
-        # Load Slack-specific user prompt (optional)
-        slack_analysis_user_prompt = None
-        try:
-            slack_analysis_user_prompt = self._load_prompt_file(slack_user_prompt_path, "slack analysis user prompt")
-        except FileNotFoundError:
-            logger.warning("Slack analysis user prompt file not found, using default user prompt")
-            slack_analysis_user_prompt = user_prompt
+        # Load Slack-specific system prompt (required)
+        slack_analysis_system_prompt = self._load_prompt_file(slack_system_prompt_path, "slack analysis system prompt")
         
-        logger.info("Successfully loaded prompts - system: %d chars, user: %d chars, slack user: %d chars", 
-                   len(system_prompt), len(user_prompt), len(slack_analysis_user_prompt))
+        logger.info("Successfully loaded prompts - system: %d chars, user: %d chars, slack system: %d chars", 
+                   len(system_prompt), len(user_prompt), len(slack_analysis_system_prompt))
         
         return Prompts(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
-            slack_analysis_user_prompt=slack_analysis_user_prompt
+            slack_analysis_system_prompt=slack_analysis_system_prompt
         )
     
     def _load_prompt_file(self, file_path: Path, prompt_type: str) -> str:

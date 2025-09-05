@@ -66,6 +66,8 @@ class TestSlackQuestionBot:
             advanced_chat_client=mock_advanced_chat_client,
             bot_name="TestBot",
             room_config_service=mock_room_config_service,
+            user_prompt="User's Question:\n{question}\n\nContext:\n{context}",
+            system_prompt="Test system prompt for analysis",
             formatter=mock_formatter
         )
     
@@ -76,7 +78,9 @@ class TestSlackQuestionBot:
             context_extractor=mock_context_extractor,
             advanced_chat_client=mock_advanced_chat_client,
             bot_name="TestBot",
-            room_config_service=mock_room_config_service
+            room_config_service=mock_room_config_service,
+            user_prompt="User's Question:\n{question}\n\nContext:\n{context}",
+            system_prompt="Test system prompt for analysis"
         )
         
         assert bot.slack_client == mock_slack_client

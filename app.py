@@ -195,9 +195,9 @@ slack_question_bot = SlackQuestionBot(
     advanced_chat_client=advanced_chat_client,
     bot_name=BOT_NAME,
     room_config_service=room_config_service,
-    formatter=formatter,
-    system_prompt=prompts.system_prompt,
-    user_prompt=prompts.slack_analysis_user_prompt
+    user_prompt=prompts.user_prompt,
+    system_prompt=prompts.slack_analysis_system_prompt,
+    formatter=formatter
 )
 
 logger.info("Bot '%s' initialized with assistants: %s", BOT_NAME, ASSISTANT_LIST)
