@@ -20,7 +20,8 @@ class TestChunksRequest:
             chunks=["User A: Hello", "User B: Hi there"],
             session_id="session-123",
             client_name="test-client",
-            prompt="You are a helpful assistant."
+            prompt="You are a helpful assistant.",
+            user_prompt="Please analyze the context to answer the user's question."
         )
         
         payload = chunks_request.to_payload()
@@ -30,6 +31,7 @@ class TestChunksRequest:
         assert payload["sessionId"] == "session-123"
         assert payload["client"] == "test-client"
         assert payload["prompt"] == "You are a helpful assistant."
+        assert payload["userPrompt"] == "Please analyze the context to answer the user's question."
         assert payload["stream"] is False
         assert payload["disable_agentic"] is True
         assert payload["assistants"] == ["clowder"]  # Default assistant
@@ -45,6 +47,7 @@ class TestChunksRequest:
             session_id="session-123",
             client_name="test-client",
             prompt="You are a helpful assistant.",
+            user_prompt="Please analyze the context to answer the user's question.",
             assistants=["custom_assistant"]
         )
         
@@ -52,6 +55,7 @@ class TestChunksRequest:
         
         assert payload["assistants"] == ["custom_assistant"]
         assert payload["prompt"] == "You are a helpful assistant."
+        assert payload["userPrompt"] == "Please analyze the context to answer the user's question."
         assert payload["disable_agentic"] is True
         # Verify model is not included when not set
         assert "model" not in payload
@@ -64,6 +68,7 @@ class TestChunksRequest:
             session_id="session-123",
             client_name="test-client",
             prompt="You are a helpful assistant.",
+            user_prompt="Please analyze the context to answer the user's question.",
             model="chatgpt-4o"
         )
         
@@ -72,6 +77,7 @@ class TestChunksRequest:
         assert payload["model"] == "chatgpt-4o"
         assert payload["assistants"] == ["clowder"]  # Default assistant
         assert payload["prompt"] == "You are a helpful assistant."
+        assert payload["userPrompt"] == "Please analyze the context to answer the user's question."
         assert payload["disable_agentic"] is True
 
 
@@ -130,7 +136,8 @@ class TestAdvancedChatClient:
             chunks=["User A: Working on the new feature", "User B: Looks good"],
             session_id="session-123",
             client_name="test-client",
-            prompt="You are a helpful assistant."
+            prompt="You are a helpful assistant.",
+            user_prompt="Please analyze the context to answer the user's question."
         )
         
         result = client.chat_with_chunks(chunks_request)
@@ -155,6 +162,7 @@ class TestAdvancedChatClient:
         assert payload["query"] == "What are they talking about?"
         assert payload["chunks"] == ["User A: Working on the new feature", "User B: Looks good"]
         assert payload["prompt"] == "You are a helpful assistant."
+        assert payload["userPrompt"] == "Please analyze the context to answer the user's question."
         assert payload["sessionId"] == "session-123"
         assert payload["client"] == "test-client"
         assert payload["assistants"] == ["clowder"]  # Default assistant
@@ -171,7 +179,8 @@ class TestAdvancedChatClient:
             chunks=["chunk1"],
             session_id="session-123",
             client_name="test-client",
-            prompt="You are a helpful assistant."
+            prompt="You are a helpful assistant.",
+            user_prompt="Please analyze the context to answer the user's question."
         )
         
         with pytest.raises(requests.exceptions.Timeout):
@@ -187,7 +196,8 @@ class TestAdvancedChatClient:
             chunks=["chunk1"],
             session_id="session-123",
             client_name="test-client",
-            prompt="You are a helpful assistant."
+            prompt="You are a helpful assistant.",
+            user_prompt="Please analyze the context to answer the user's question."
         )
         
         with pytest.raises(requests.exceptions.ConnectionError):
@@ -206,7 +216,8 @@ class TestAdvancedChatClient:
             chunks=["chunk1"],
             session_id="session-123",
             client_name="test-client",
-            prompt="You are a helpful assistant."
+            prompt="You are a helpful assistant.",
+            user_prompt="Please analyze the context to answer the user's question."
         )
         
         with pytest.raises(requests.exceptions.HTTPError):
@@ -225,7 +236,8 @@ class TestAdvancedChatClient:
             chunks=["chunk1"],
             session_id="session-123",
             client_name="test-client",
-            prompt="You are a helpful assistant."
+            prompt="You are a helpful assistant.",
+            user_prompt="Please analyze the context to answer the user's question."
         )
         
         with pytest.raises(json.JSONDecodeError):

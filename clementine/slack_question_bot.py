@@ -62,7 +62,8 @@ class SlackQuestionBot:
                  bot_name: str,
                  room_config_service: RoomConfigService,
                  formatter: ResponseFormatter = None,
-                 system_prompt: str = None):
+                 system_prompt: str = None,
+                 user_prompt: str = None):
         self.slack_client = slack_client
         self.context_extractor = context_extractor
         self.advanced_chat_client = advanced_chat_client
@@ -71,6 +72,9 @@ class SlackQuestionBot:
         self.formatter = formatter or MessageFormatter()
         self.error_handler = ErrorHandler(bot_name)
         self.system_prompt = system_prompt or DEFAULT_SLACK_ANALYSIS_PROMPT
+        # Default user prompt for Slack analysis - will be overridden by loaded prompts in production
+        default_slack_user_prompt = "The user is asking a question about Slack conversations. Please analyze the provided Slack message context to answer their question naturally and conversationally."
+        self.user_prompt = user_prompt or default_slack_user_prompt
     
     def handle_question(self, question: str, channel: str, thread_ts: str, 
                        user_id: str, slack_web_client: WebClient) -> None:
@@ -141,6 +145,7 @@ class SlackQuestionBot:
             session_id=session_id,
             client_name=self.bot_name,
             prompt=self.system_prompt,
+            user_prompt=self.user_prompt,
             model=self.advanced_chat_client.model_override
         )
         

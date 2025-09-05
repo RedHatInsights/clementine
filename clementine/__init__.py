@@ -10,6 +10,7 @@ from .slack_client import SlackClient, SlackEvent
 from .tangerine import TangerineClient, TangerineResponse
 from .formatters import MessageFormatter
 from .error_handling import ErrorHandler
+from .prompt_loader import PromptLoader
 
 __version__ = "0.1.0"
 
@@ -21,4 +22,5 @@ __all__ = [
     "TangerineResponse", 
     "MessageFormatter",
     "ErrorHandler",
+    "PromptLoader",
 ] 

@@ -8,7 +8,7 @@ import time
 from dotenv import load_dotenv
 
 from clementine.config.logging import LoggingConfigurator
-from clementine import TangerineClient, ClementineBot, SlackClient
+from clementine import TangerineClient, ClementineBot, SlackClient, PromptLoader
 from clementine.formatters import MessageFormatter, BlockKitFormatter
 from clementine.feedback_client import FeedbackClient
 from clementine.feedback_handler import FeedbackHandler
@@ -56,6 +56,16 @@ def validate_required_env_vars():
 
 validate_required_env_vars()
 
+# Load prompts from files at startup
+logger.info("Loading prompts from files")
+prompt_loader = PromptLoader()
+try:
+    prompts = prompt_loader.load_prompts()
+    logger.info("Successfully loaded prompts")
+except Exception as e:
+    logger.error("Failed to load prompts: %s", e)
+    raise SystemExit(f"Prompt Loading Error: {e}")
+
 # Load config from environment
 SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")  # xoxb-...
 SLACK_SIGNING_SECRET = os.getenv("SLACK_SIGNING_SECRET")
@@ -70,7 +80,8 @@ if not ASSISTANT_LIST:
     logger.warning("No valid assistants in ASSISTANT_LIST, using default: konflux")
     ASSISTANT_LIST = ["konflux"]
 
-DEFAULT_PROMPT = os.getenv("DEFAULT_PROMPT", "You are a helpful assistant.")
+# Use loaded system prompt as default, with environment variable override
+DEFAULT_PROMPT = os.getenv("DEFAULT_PROMPT", prompts.system_prompt)
 TANGERINE_API_URL = os.getenv("TANGERINE_API_URL", "").rstrip('/')  # Remove trailing slash
 TANGERINE_API_TOKEN = os.getenv("TANGERINE_API_TOKEN")
 
@@ -184,8 +195,9 @@ slack_question_bot = SlackQuestionBot(
     advanced_chat_client=advanced_chat_client,
     bot_name=BOT_NAME,
     room_config_service=room_config_service,
-    formatter=formatter
-    # Uses DEFAULT_SLACK_ANALYSIS_PROMPT by default (designed for Slack conversation analysis)
+    formatter=formatter,
+    system_prompt=prompts.system_prompt,
+    user_prompt=prompts.slack_analysis_user_prompt
 )
 
 logger.info("Bot '%s' initialized with assistants: %s", BOT_NAME, ASSISTANT_LIST)
