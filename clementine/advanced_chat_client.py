@@ -20,6 +20,7 @@ class ChunksRequest:
     session_id: str
     client_name: str
     prompt: str
+    user_prompt: str
     assistants: List[str] = None
     model: str = None
     
@@ -38,6 +39,7 @@ class ChunksRequest:
             "stream": False,
             "chunks": self.chunks,
             "prompt": self.prompt,
+            "userPrompt": self.user_prompt,
             "disable_agentic": True
         }
         

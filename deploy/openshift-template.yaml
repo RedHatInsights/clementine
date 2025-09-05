@@ -88,11 +88,6 @@ parameters:
   value: "inscope-all-docs-agent"
   required: false
 
-- name: DEFAULT_PROMPT
-  displayName: "Default Prompt"
-  description: "Default prompt for AI assistant"
-  value: "You are a helpful slack bot than can answer questions in a slack channel."
-  required: false
 
 - name: TANGERINE_API_TIMEOUT
   displayName: "API Timeout"
@@ -188,7 +183,6 @@ objects:
     log-file: "${LOG_FILE}"
     bot-name: "${BOT_NAME}"
     assistant-list: "${ASSISTANT_LIST}"
-    default-prompt: "${DEFAULT_PROMPT}"
     tangerine-api-timeout: "${TANGERINE_API_TIMEOUT}"
     model-override: "${MODEL_OVERRIDE}"
     room-config-db-path: "${ROOM_CONFIG_DB_PATH}"
@@ -288,11 +282,6 @@ objects:
               configMapKeyRef:
                 name: "${APP_NAME}-config"
                 key: assistant-list
-          - name: DEFAULT_PROMPT
-            valueFrom:
-              configMapKeyRef:
-                name: "${APP_NAME}-config"
-                key: default-prompt
           - name: TANGERINE_API_TIMEOUT
             valueFrom:
               configMapKeyRef:

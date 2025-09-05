@@ -14,33 +14,9 @@ from .room_config_service import RoomConfigService
 
 logger = logging.getLogger(__name__)
 
-# Default system prompt for analyzing Slack conversations
-DEFAULT_SLACK_ANALYSIS_PROMPT = """You are a helpful Slack bot answering questions about recent chat messages. You're having a casual conversation with a colleague who asked about what's been discussed in the channel.
-
-ABSOLUTELY FORBIDDEN - NEVER DO THESE:
-- DO NOT rank, number, or list messages (no "1. Message from..." or "Search result 3")
-- DO NOT use markdown formatting (**bold**, *italics*, `code`) - it breaks in Slack
-- DO NOT call messages "search results", "sources", or "documents" 
-- DO NOT create numbered lists or rankings of any kind
-- DO NOT use academic or formal analysis language
-- DO NOT structure your response like a research paper
-
-REQUIRED RESPONSE STYLE:
-- Answer like you're chatting with a coworker
-- Just read the messages and tell them what you found
-- Use plain text only, no special formatting
-- Be direct and conversational
-- Mention people by their actual names from the messages
-
-EXAMPLES OF GOOD RESPONSES:
-"Matt K is working on Clowder. He mentioned writing a blog post about multi-cluster features and getting some Konflux PRs merged."
-
-EXAMPLES OF BAD RESPONSES (NEVER DO THIS):
-"Ranking of messages: 1. Matt K states... 2. Search result shows..."
-"**Analysis:** Based on search result 3..."
-"Sources indicate that Matt K..."
-
-You're just a helpful bot reading chat messages and answering questions naturally. No rankings, no formal analysis, just casual conversation."""
+# Slack analysis prompts are loaded from files at startup:
+# - System prompt: slack_analysis_system_prompt.txt (NEVER overridden by room config)
+# - User prompt: default_user_prompt.txt (same for ALL code paths)
 
 
 class SlackQuestionBot:
@@ -61,8 +37,9 @@ class SlackQuestionBot:
                  advanced_chat_client: AdvancedChatClient,
                  bot_name: str,
                  room_config_service: RoomConfigService,
-                 formatter: ResponseFormatter = None,
-                 system_prompt: str = None):
+                 user_prompt: str,
+                 system_prompt: str,
+                 formatter: ResponseFormatter = None):
         self.slack_client = slack_client
         self.context_extractor = context_extractor
         self.advanced_chat_client = advanced_chat_client
@@ -70,7 +47,14 @@ class SlackQuestionBot:
         self.room_config_service = room_config_service
         self.formatter = formatter or MessageFormatter()
         self.error_handler = ErrorHandler(bot_name)
-        self.system_prompt = system_prompt or DEFAULT_SLACK_ANALYSIS_PROMPT
+        # Slack analysis system prompt is NEVER overridden by room config
+        if not system_prompt:
+            raise ValueError("system_prompt is required and must be loaded from slack_analysis_system_prompt.txt")
+        self.system_prompt = system_prompt
+        # User prompt is always loaded from default_user_prompt.txt (same for all code paths)
+        if not user_prompt:
+            raise ValueError("user_prompt is required and must be loaded from default_user_prompt.txt")
+        self.user_prompt = user_prompt
     
     def handle_question(self, question: str, channel: str, thread_ts: str, 
                        user_id: str, slack_web_client: WebClient) -> None:
@@ -141,6 +125,7 @@ class SlackQuestionBot:
             session_id=session_id,
             client_name=self.bot_name,
             prompt=self.system_prompt,
+            user_prompt=self.user_prompt,
             model=self.advanced_chat_client.model_override
         )
         

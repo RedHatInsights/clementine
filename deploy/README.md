@@ -160,7 +160,6 @@ The template supports all environment variables used by the application:
 - `LOG_LEVEL` - Logging level (default: INFO)
 - `BOT_NAME` - Bot display name (default: Clementine)
 - `ASSISTANT_LIST` - Available assistants (default: konflux)
-- `DEFAULT_PROMPT` - Default AI prompt
 - `TANGERINE_API_TIMEOUT` - API timeout in seconds (default: 500)
 - `AI_DISCLOSURE_ENABLED` - Show AI disclosure messages (default: true)
 - `FEEDBACK_ENABLED` - Enable user feedback (default: true)

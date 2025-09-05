@@ -18,8 +18,10 @@ COPY Pipfile Pipfile.lock ./
 # Install dependencies using pipenv
 RUN pipenv install --system --deploy
 
-# Copy application code
-COPY . .
+# Copy application code - targeted copies for security
+COPY app.py ./
+COPY clementine/ ./clementine/
+COPY prompts/ ./prompts/
 
 # Create directory for database storage with proper permissions
 RUN mkdir -p /app/data && \
@@ -40,7 +42,6 @@ ENV LOG_LEVEL="INFO" \
     LOG_FILE="" \
     BOT_NAME="Clementine" \
     ASSISTANT_LIST="konflux" \
-    DEFAULT_PROMPT="You are a helpful assistant." \
     TANGERINE_API_TIMEOUT="500" \
     MODEL_OVERRIDE="" \
     ROOM_CONFIG_DB_PATH="/app/data/room_configs.db" \

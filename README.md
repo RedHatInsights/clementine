@@ -99,7 +99,6 @@ pytest --cov=clementine  # With coverage
 | `LOG_FILE` | (none) | Path to log file (console only if empty) |
 | `BOT_NAME` | `Clementine` | Display name for the bot |
 | `ASSISTANT_LIST` | `konflux` | Comma-separated list of available assistants |
-| `DEFAULT_PROMPT` | Generic prompt | Default system prompt for AI responses |
 | `TANGERINE_API_TIMEOUT` | `500` | API request timeout in seconds |
 | `MODEL_OVERRIDE` | (none) | Override model for all Tangerine API requests (e.g., `chatgpt-4o`) |
 | `ROOM_CONFIG_DB_PATH` | `room_configs.db` | Path to SQLite database file |
