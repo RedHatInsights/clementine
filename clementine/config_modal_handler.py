@@ -231,6 +231,7 @@ class ConfigModalHandler:
             
             blocks.append({
                 "type": "section",
+                "block_id": "reset_to_defaults_block",
                 "text": {
                     "type": "mrkdwn",
                     "text": "*Reset to Defaults*\nCheck this box to remove custom configuration and use system defaults"
@@ -320,7 +321,7 @@ class ConfigModalHandler:
                 form_values["slack_context_size"] = context_size_value
         
         # Check for reset option
-        reset_section = state_values.get("reset_to_defaults", {})
+        reset_section = state_values.get("reset_to_defaults_block", {})
         if reset_section:
             reset_options = reset_section.get("reset_to_defaults", {}).get("selected_options", [])
             form_values["reset_to_defaults"] = len(reset_options) > 0
