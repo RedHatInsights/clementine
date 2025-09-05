@@ -28,6 +28,7 @@ services:
       # MODEL_OVERRIDE: "chatgpt-4o"
       # AI_DISCLOSURE_ENABLED: "true"
       # FEEDBACK_ENABLED: "true"
+      # DOC_BASE_URL: "https://your-docs-site.example.com"
     
     # Persistent volume for database storage
     volumes:

@@ -58,6 +58,63 @@ class TestMessageFormatter:
         # Should only include first 3 sources
         expected = "Hello\n\n*Sources:*\n<http://example0.com|Example 0>\n<http://example1.com|Example 1>\n<http://example2.com|Example 2>"
         assert result == expected
+    
+    def test_format_with_doc_base_url_and_relative_paths(self):
+        """Test formatting with DOC_BASE_URL and relative citation paths."""
+        formatter = MessageFormatter(doc_base_url="https://docs.example.com")
+        metadata = [
+            {"metadata": {"citation_url": "/docs/guide/getting-started", "title": "Getting Started"}},
+            {"metadata": {"citation_url": "/docs/api/reference", "title": "API Reference"}}
+        ]
+        response = TangerineResponse(text="Hello", metadata=metadata, interaction_id="test-123")
+        
+        result = formatter.format_with_sources(response)
+        
+        expected = "Hello\n\n*Sources:*\n<https://docs.example.com/docs/guide/getting-started|Getting Started>\n<https://docs.example.com/docs/api/reference|API Reference>"
+        assert result == expected
+    
+    def test_format_with_doc_base_url_and_absolute_urls(self):
+        """Test formatting with DOC_BASE_URL but absolute URLs in citation_url."""
+        formatter = MessageFormatter(doc_base_url="https://docs.example.com")
+        metadata = [
+            {"metadata": {"citation_url": "https://external.com/guide", "title": "External Guide"}},
+            {"metadata": {"citation_url": "http://another.com/api", "title": "Another API"}}
+        ]
+        response = TangerineResponse(text="Hello", metadata=metadata, interaction_id="test-123")
+        
+        result = formatter.format_with_sources(response)
+        
+        # Should use original URLs since they're already absolute
+        expected = "Hello\n\n*Sources:*\n<https://external.com/guide|External Guide>\n<http://another.com/api|Another API>"
+        assert result == expected
+    
+    def test_format_with_doc_base_url_mixed_paths(self):
+        """Test formatting with mix of relative and absolute paths."""
+        formatter = MessageFormatter(doc_base_url="https://docs.example.com")
+        metadata = [
+            {"metadata": {"citation_url": "/docs/internal", "title": "Internal Doc"}},
+            {"metadata": {"citation_url": "https://external.com/doc", "title": "External Doc"}}
+        ]
+        response = TangerineResponse(text="Hello", metadata=metadata, interaction_id="test-123")
+        
+        result = formatter.format_with_sources(response)
+        
+        expected = "Hello\n\n*Sources:*\n<https://docs.example.com/docs/internal|Internal Doc>\n<https://external.com/doc|External Doc>"
+        assert result == expected
+    
+    def test_format_with_doc_base_url_trailing_slash(self):
+        """Test that trailing slashes in DOC_BASE_URL are handled correctly."""
+        formatter = MessageFormatter(doc_base_url="https://docs.example.com/")
+        metadata = [
+            {"metadata": {"citation_url": "/docs/guide", "title": "Guide"}}
+        ]
+        response = TangerineResponse(text="Hello", metadata=metadata, interaction_id="test-123")
+        
+        result = formatter.format_with_sources(response)
+        
+        # Should not double slash
+        expected = "Hello\n\n*Sources:*\n<https://docs.example.com/docs/guide|Guide>"
+        assert result == expected
 
 
 class TestBlockKitFormatter:
@@ -218,4 +275,57 @@ class TestBlockKitFormatter:
         assert "Example 2" in sources_text
         # Should not contain 4th and 5th sources
         assert "Example 3" not in sources_text
-        assert "Example 4" not in sources_text 
+        assert "Example 4" not in sources_text
+    
+    def test_format_with_doc_base_url_and_relative_paths(self):
+        """Test BlockKit formatting with DOC_BASE_URL and relative citation paths."""
+        formatter = BlockKitFormatter(ai_disclosure_enabled=False, feedback_enabled=False, 
+                                     doc_base_url="https://docs.example.com")
+        metadata = [
+            {"metadata": {"citation_url": "/docs/guide/getting-started", "title": "Getting Started"}},
+            {"metadata": {"citation_url": "/docs/api/reference", "title": "API Reference"}}
+        ]
+        response = TangerineResponse(text="Hello", metadata=metadata, interaction_id="test-123")
+        
+        result = formatter.format_with_sources(response)
+        
+        # Check sources block
+        sources_block = result["blocks"][1]
+        sources_text = sources_block["elements"][0]["text"]
+        assert "<https://docs.example.com/docs/guide/getting-started|Getting Started>" in sources_text
+        assert "<https://docs.example.com/docs/api/reference|API Reference>" in sources_text
+    
+    def test_format_with_doc_base_url_and_absolute_urls(self):
+        """Test BlockKit formatting with DOC_BASE_URL but absolute URLs in citation_url."""
+        formatter = BlockKitFormatter(ai_disclosure_enabled=False, feedback_enabled=False,
+                                     doc_base_url="https://docs.example.com")
+        metadata = [
+            {"metadata": {"citation_url": "https://external.com/guide", "title": "External Guide"}},
+            {"metadata": {"citation_url": "http://another.com/api", "title": "Another API"}}
+        ]
+        response = TangerineResponse(text="Hello", metadata=metadata, interaction_id="test-123")
+        
+        result = formatter.format_with_sources(response)
+        
+        # Should use original URLs since they're already absolute
+        sources_block = result["blocks"][1]
+        sources_text = sources_block["elements"][0]["text"]
+        assert "<https://external.com/guide|External Guide>" in sources_text
+        assert "<http://another.com/api|Another API>" in sources_text
+    
+    def test_format_with_doc_base_url_mixed_paths(self):
+        """Test BlockKit formatting with mix of relative and absolute paths."""
+        formatter = BlockKitFormatter(ai_disclosure_enabled=False, feedback_enabled=False,
+                                     doc_base_url="https://docs.example.com")
+        metadata = [
+            {"metadata": {"citation_url": "/docs/internal", "title": "Internal Doc"}},
+            {"metadata": {"citation_url": "https://external.com/doc", "title": "External Doc"}}
+        ]
+        response = TangerineResponse(text="Hello", metadata=metadata, interaction_id="test-123")
+        
+        result = formatter.format_with_sources(response)
+        
+        sources_block = result["blocks"][1]
+        sources_text = sources_block["elements"][0]["text"]
+        assert "<https://docs.example.com/docs/internal|Internal Doc>" in sources_text
+        assert "<https://external.com/doc|External Doc>" in sources_text

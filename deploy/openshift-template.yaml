@@ -137,6 +137,12 @@ parameters:
   value: "250"
   required: false
 
+- name: DOC_BASE_URL
+  displayName: "Documentation Base URL"
+  description: "Base URL for documentation links to make source citations clickable"
+  value: ""
+  required: false
+
 # Resource configuration
 - name: MEMORY_LIMIT
   displayName: "Memory Limit"
@@ -191,6 +197,7 @@ objects:
     feedback-enabled: "${FEEDBACK_ENABLED}"
     slack-min-context: "${SLACK_MIN_CONTEXT}"
     slack-max-context: "${SLACK_MAX_CONTEXT}"
+    doc-base-url: "${DOC_BASE_URL}"
 
 # PersistentVolumeClaim for database storage
 - apiVersion: v1
@@ -322,6 +329,11 @@ objects:
               configMapKeyRef:
                 name: "${APP_NAME}-config"
                 key: slack-max-context
+          - name: DOC_BASE_URL
+            valueFrom:
+              configMapKeyRef:
+                name: "${APP_NAME}-config"
+                key: doc-base-url
           
           # Resource limits and requests
           resources:
