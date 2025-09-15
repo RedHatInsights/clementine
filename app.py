@@ -303,12 +303,14 @@ def handle_clementine_command(ack, body, client):
             user_id = body.get("user_id")
             
             # For slash commands, there's no thread context, so we'll use channel history
+            # Use ephemeral=True to make responses visible only to the user who issued the command
             slack_question_bot.handle_question(
                 question=question,
                 channel=channel_id,
                 thread_ts=None,  # No thread for slash commands
                 user_id=user_id,
-                slack_web_client=client
+                slack_web_client=client,
+                ephemeral=True  # Slash command responses are private to the user
             )
         else:
             # Show help text for unknown commands
