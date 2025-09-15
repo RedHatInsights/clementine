@@ -222,6 +222,8 @@ objects:
       app: "${APP_NAME}"
   spec:
     replicas: 1
+    strategy:
+      type: Recreate
     selector:
       matchLabels:
         app: "${APP_NAME}"
