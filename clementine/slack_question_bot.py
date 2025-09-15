@@ -57,7 +57,7 @@ class SlackQuestionBot:
         self.user_prompt = user_prompt
     
     def handle_question(self, question: str, channel: str, thread_ts: str, 
-                       user_id: str, slack_web_client: WebClient) -> None:
+                       user_id: str, slack_web_client: WebClient, ephemeral: bool = False) -> None:
         """Handle a question about the current Slack context.
         
         Args:
@@ -66,11 +66,15 @@ class SlackQuestionBot:
             thread_ts: Thread timestamp (may be None for channel questions)
             user_id: User who asked the question
             slack_web_client: Slack web client for posting responses
+            ephemeral: If True, response will be visible only to the user (for slash commands)
         """
-        logger.info("Processing Slack context question from user %s in channel %s", user_id, channel)
+        logger.info("Processing Slack context question from user %s in channel %s (ephemeral: %s)", 
+                   user_id, channel, ephemeral)
         
-        # Post loading message
-        loading_ts = self.slack_client.post_loading_message(channel, thread_ts)
+        # Post loading message (ephemeral if requested)
+        loading_ts = self.slack_client.post_loading_message(
+            channel, thread_ts, user_id if ephemeral else None
+        )
         if not loading_ts:
             logger.warning("Failed to post loading message, aborting question handling")
             return
@@ -81,7 +85,8 @@ class SlackQuestionBot:
             
             if not context_chunks:
                 error_message = "I couldn't find any recent conversation context to answer your question about."
-                self._update_message_with_error(channel, loading_ts, error_message)
+                self._update_message_with_error(channel, loading_ts, error_message, 
+                                               user_id if ephemeral else None)
                 return
             
             # Get response from advanced chat API
@@ -89,14 +94,16 @@ class SlackQuestionBot:
             
             # Format and post response
             formatted_message = self.formatter.format_with_sources(response)
-            self._update_message(channel, loading_ts, formatted_message)
+            self._update_message(channel, loading_ts, formatted_message, 
+                               user_id if ephemeral else None)
             
             logger.info("Successfully handled Slack context question for user %s", user_id)
             
         except Exception as error:
             logger.error("Error handling Slack context question: %s", error)
             error_message = self.error_handler.format_error_message(error)
-            self._update_message_with_error(channel, loading_ts, error_message)
+            self._update_message_with_error(channel, loading_ts, error_message, 
+                                           user_id if ephemeral else None)
     
     def _extract_context(self, channel: str, thread_ts: str) -> list[str]:
         """Extract context from Slack channel or thread using room-specific context size."""
@@ -133,22 +140,38 @@ class SlackQuestionBot:
                     len(context_chunks))
         return self.advanced_chat_client.chat_with_chunks(chunks_request)
     
-    def _update_message(self, channel: str, ts: str, formatted_message: Union[str, Dict]) -> None:
-        """Update Slack message with response (text or Block Kit)."""
+    def _update_message(self, channel: str, ts: str, formatted_message: Union[str, Dict], 
+                       user_id: str = None) -> None:
+        """Update Slack message with response (text or Block Kit).
+        
+        Args:
+            channel: Slack channel ID
+            ts: Message timestamp
+            formatted_message: Response message (text or Block Kit dict)
+            user_id: If provided, updates an ephemeral message for this user
+        """
         if isinstance(formatted_message, dict):
             # Block Kit message
             success = self.slack_client.update_message_with_blocks(
-                channel, ts, formatted_message
+                channel, ts, formatted_message, user_id
             )
         else:
             # Plain text message
-            success = self.slack_client.update_message(channel, ts, formatted_message)
+            success = self.slack_client.update_message(channel, ts, formatted_message, user_id)
         
         if not success:
             logger.warning("Failed to update message %s in channel %s", ts, channel)
     
-    def _update_message_with_error(self, channel: str, ts: str, error_message: str) -> None:
-        """Update message with error text."""
-        success = self.slack_client.update_message(channel, ts, error_message)
+    def _update_message_with_error(self, channel: str, ts: str, error_message: str, 
+                                  user_id: str = None) -> None:
+        """Update message with error text.
+        
+        Args:
+            channel: Slack channel ID
+            ts: Message timestamp
+            error_message: Error message text
+            user_id: If provided, updates an ephemeral message for this user
+        """
+        success = self.slack_client.update_message(channel, ts, error_message, user_id)
         if not success:
             logger.warning("Failed to update message %s with error in channel %s", ts, channel)

@@ -83,40 +83,101 @@ class SlackClient:
         """Extract error code from SlackApiError safely."""
         return slack_error.response.get('error', 'unknown') if hasattr(slack_error.response, 'get') else 'unknown'
     
-    def post_loading_message(self, channel: str, thread_ts: str) -> Optional[str]:
-        """Post loading message and return timestamp."""
+    def post_loading_message(self, channel: str, thread_ts: str, user_id: str = None) -> Optional[str]:
+        """Post loading message and return timestamp.
+        
+        Args:
+            channel: Slack channel ID
+            thread_ts: Thread timestamp (None for channel messages)
+            user_id: If provided, posts an ephemeral message visible only to this user
+            
+        Returns:
+            Message timestamp or None if failed
+        """
         try:
             loading_message = self.loading_message_provider.get_random_message()
-            response = self.client.chat_postMessage(
-                channel=channel,
-                text=loading_message,
-                thread_ts=thread_ts
-            )
-            return response["ts"]
+            
+            if user_id:
+                # Post ephemeral message (private to user)
+                response = self.client.chat_postEphemeral(
+                    channel=channel,
+                    user=user_id,
+                    text=loading_message,
+                    thread_ts=thread_ts
+                )
+                # Ephemeral messages return a different response structure
+                return response.get("message_ts") or response.get("ts")
+            else:
+                # Post regular public message
+                response = self.client.chat_postMessage(
+                    channel=channel,
+                    text=loading_message,
+                    thread_ts=thread_ts
+                )
+                return response["ts"]
         except SlackApiError as e:
             error_code = self._extract_error_code(e)
             logger.error("Failed to post loading message: %s - %s", error_code, e)
             return None
     
-    def update_message(self, channel: str, ts: str, text: str) -> bool:
-        """Update message with plain text and return success status."""
+    def update_message(self, channel: str, ts: str, text: str, user_id: str = None) -> bool:
+        """Update message with plain text and return success status.
+        
+        Args:
+            channel: Slack channel ID
+            ts: Message timestamp
+            text: New message text
+            user_id: If provided, updates an ephemeral message for this user
+            
+        Returns:
+            True if successful, False otherwise
+        """
         try:
-            self.client.chat_update(channel=channel, ts=ts, text=text)
+            if user_id:
+                # Update ephemeral message
+                self.client.chat_postEphemeral(
+                    channel=channel,
+                    user=user_id,
+                    text=text
+                )
+            else:
+                # Update regular message
+                self.client.chat_update(channel=channel, ts=ts, text=text)
             return True
         except SlackApiError as e:
             error_code = self._extract_error_code(e)
             logger.error("Failed to update message: %s - %s", error_code, e)
             return False
     
-    def update_message_with_blocks(self, channel: str, ts: str, blocks_message: dict) -> bool:
-        """Update message with Block Kit blocks and return success status."""
+    def update_message_with_blocks(self, channel: str, ts: str, blocks_message: dict, user_id: str = None) -> bool:
+        """Update message with Block Kit blocks and return success status.
+        
+        Args:
+            channel: Slack channel ID
+            ts: Message timestamp
+            blocks_message: Block Kit message with 'blocks' and 'text' keys
+            user_id: If provided, updates an ephemeral message for this user
+            
+        Returns:
+            True if successful, False otherwise
+        """
         try:
-            self.client.chat_update(
-                channel=channel, 
-                ts=ts, 
-                blocks=blocks_message["blocks"],
-                text=blocks_message["text"]  # Fallback text for notifications
-            )
+            if user_id:
+                # Update ephemeral message with blocks
+                self.client.chat_postEphemeral(
+                    channel=channel,
+                    user=user_id,
+                    blocks=blocks_message["blocks"],
+                    text=blocks_message["text"]  # Fallback text for notifications
+                )
+            else:
+                # Update regular message with blocks
+                self.client.chat_update(
+                    channel=channel, 
+                    ts=ts, 
+                    blocks=blocks_message["blocks"],
+                    text=blocks_message["text"]  # Fallback text for notifications
+                )
             return True
         except SlackApiError as e:
             error_code = self._extract_error_code(e)

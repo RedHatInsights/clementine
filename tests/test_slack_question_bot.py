@@ -119,7 +119,7 @@ class TestSlackQuestionBot:
         )
         
         # Verify calls
-        mock_slack_client.post_loading_message.assert_called_once_with("C123456", "1234567890.123")
+        mock_slack_client.post_loading_message.assert_called_once_with("C123456", "1234567890.123", None)
         mock_context_extractor.extract_thread_context.assert_called_once_with("C123456", "1234567890.123", limit=50)
         mock_context_extractor.extract_channel_context.assert_not_called()
         
@@ -133,7 +133,7 @@ class TestSlackQuestionBot:
         assert call_args.prompt  # Should have a prompt
         
         mock_formatter.format_with_sources.assert_called_once_with(mock_response)
-        mock_slack_client.update_message.assert_called_once_with("C123456", "loading_ts_123", "Formatted response")
+        mock_slack_client.update_message.assert_called_once_with("C123456", "loading_ts_123", "Formatted response", None)
     
     def test_handle_question_success_without_thread(self, bot, mock_slack_client, mock_context_extractor, 
                                                    mock_advanced_chat_client, mock_formatter, mock_slack_web_client):
@@ -163,7 +163,7 @@ class TestSlackQuestionBot:
         )
         
         # Verify calls
-        mock_slack_client.post_loading_message.assert_called_once_with("C123456", None)
+        mock_slack_client.post_loading_message.assert_called_once_with("C123456", None, None)
         mock_context_extractor.extract_channel_context.assert_called_once_with("C123456", limit=50)
         mock_context_extractor.extract_thread_context.assert_not_called()
         
@@ -172,6 +172,9 @@ class TestSlackQuestionBot:
         call_args = mock_advanced_chat_client.chat_with_chunks.call_args[0][0]
         assert call_args.chunks == ["User A: Good morning", "User B: How's the project going?"]
         assert call_args.prompt  # Should have a prompt
+        
+        mock_formatter.format_with_sources.assert_called_once_with(mock_response)
+        mock_slack_client.update_message.assert_called_once_with("C123456", "loading_ts_123", "Formatted response", None)
     
     def test_handle_question_no_loading_message(self, bot, mock_slack_client, mock_slack_web_client):
         """Test handling when loading message fails to post."""
@@ -205,9 +208,10 @@ class TestSlackQuestionBot:
         
         # Should update message with error
         mock_slack_client.update_message.assert_called_once_with(
-            "C123456", 
-            "loading_ts_123", 
-            "I couldn't find any recent conversation context to answer your question about."
+            "C123456",
+            "loading_ts_123",
+            "I couldn't find any recent conversation context to answer your question about.",
+            None
         )
     
     def test_handle_question_exception_handling(self, bot, mock_slack_client, mock_context_extractor, 
@@ -230,6 +234,7 @@ class TestSlackQuestionBot:
         assert call_args[0] == "C123456"
         assert call_args[1] == "loading_ts_123"
         assert "TestBot hit a snag" in call_args[2]  # Error message from ErrorHandler
+        assert call_args[3] is None  # user_id should be None for non-ephemeral
     
     def test_handle_question_with_block_kit_response(self, bot, mock_slack_client, mock_context_extractor, 
                                                     mock_advanced_chat_client, mock_formatter, mock_slack_web_client):
@@ -258,8 +263,39 @@ class TestSlackQuestionBot:
         
         # Should call update_message_with_blocks instead of update_message
         mock_slack_client.update_message_with_blocks.assert_called_once()
+        call_args = mock_slack_client.update_message_with_blocks.call_args[0]
+        assert call_args[3] is None  # user_id should be None for non-ephemeral
         mock_slack_client.update_message.assert_not_called()
     
+    def test_handle_question_ephemeral_mode(self, bot, mock_slack_client, mock_context_extractor, 
+                                           mock_advanced_chat_client, mock_formatter, mock_slack_web_client):
+        """Test ephemeral mode for slash commands."""
+        # Setup mocks
+        mock_slack_client.post_loading_message.return_value = "loading_ts_123"
+        mock_context_extractor.extract_thread_context.return_value = ["User A: Working on feature"]
+        
+        mock_response = TangerineResponse(
+            text="They are discussing feature development.",
+            metadata=[],
+            interaction_id="interaction_123"
+        )
+        mock_advanced_chat_client.chat_with_chunks.return_value = mock_response
+        mock_formatter.format_with_sources.return_value = "Formatted response"
+        
+        # Execute with ephemeral=True
+        bot.handle_question(
+            question="What are they talking about?",
+            channel="C123456",
+            thread_ts="1234567890.123",
+            user_id="U123456",
+            slack_web_client=mock_slack_web_client,
+            ephemeral=True  # This should make responses private
+        )
+        
+        # Verify that user_id is passed to make messages ephemeral
+        mock_slack_client.post_loading_message.assert_called_once_with("C123456", "1234567890.123", "U123456")
+        mock_slack_client.update_message.assert_called_once_with("C123456", "loading_ts_123", "Formatted response", "U123456")
+
     @patch('clementine.slack_question_bot.generate_session_id')
     def test_get_chat_response_session_id_generation(self, mock_generate_session_id, bot, mock_advanced_chat_client):
         """Test session ID generation for chat response."""
