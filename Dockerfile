@@ -1,5 +1,5 @@
 # Use the specified Red Hat UBI9 Python 3.11 base image
-FROM registry.redhat.io/ubi9/python-311@sha256:2562359c69c5a6c8270b6f19be8cc78fab67acaf0317afc67bab6db0bd04d4e3
+FROM registry.redhat.io/ubi9/python-311@sha256:ed423c14020369e28f1a9ecb6ea74eb1e23b521c9fd82e3690bb53300086c571
 
 # Set metadata
 LABEL name="clementine" \
