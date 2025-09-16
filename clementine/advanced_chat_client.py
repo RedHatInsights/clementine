@@ -23,6 +23,7 @@ class ChunksRequest:
     user_prompt: str
     assistants: List[str] = None
     model: str = None
+    no_persist_chunks: bool = False
     
     def __post_init__(self):
         """Set default assistants if none provided."""
@@ -49,6 +50,10 @@ class ChunksRequest:
         # Add model if specified
         if self.model:
             payload["model"] = self.model
+        
+        # Add no_persist_chunks if enabled (for slack slash commands)
+        if self.no_persist_chunks:
+            payload["no_persist_chunks"] = True
             
         return payload
 

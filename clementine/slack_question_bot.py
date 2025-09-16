@@ -57,7 +57,7 @@ class SlackQuestionBot:
         self.user_prompt = user_prompt
     
     def handle_question(self, question: str, channel: str, thread_ts: str, 
-                       user_id: str, slack_web_client: WebClient, ephemeral: bool = False) -> None:
+                       user_id: str, slack_web_client: WebClient, no_persist_chunks: bool = False) -> None:
         """Handle a question about the current Slack context.
         
         Args:
@@ -66,14 +66,14 @@ class SlackQuestionBot:
             thread_ts: Thread timestamp (may be None for channel questions)
             user_id: User who asked the question
             slack_web_client: Slack web client for posting responses
-            ephemeral: If True, response will be visible only to the user (for slash commands)
+            no_persist_chunks: If True, sets no_persist_chunks for API call (for slash commands)
         """
-        logger.info("Processing Slack context question from user %s in channel %s (ephemeral: %s)", 
-                   user_id, channel, ephemeral)
+        logger.info("Processing Slack context question from user %s in channel %s (no_persist_chunks: %s)", 
+                   user_id, channel, no_persist_chunks)
         
-        # Post loading message (ephemeral if requested)
+        # Post loading message (ephemeral for slash commands when no_persist_chunks is True)
         loading_ts = self.slack_client.post_loading_message(
-            channel, thread_ts, user_id if ephemeral else None
+            channel, thread_ts, user_id if no_persist_chunks else None
         )
         if not loading_ts:
             logger.warning("Failed to post loading message, aborting question handling")
@@ -86,16 +86,16 @@ class SlackQuestionBot:
             if not context_chunks:
                 error_message = "I couldn't find any recent conversation context to answer your question about."
                 self._update_message_with_error(channel, loading_ts, error_message, 
-                                               user_id if ephemeral else None)
+                                               user_id if no_persist_chunks else None)
                 return
             
             # Get response from advanced chat API
-            response = self._get_chat_response(question, context_chunks, channel, thread_ts)
+            response = self._get_chat_response(question, context_chunks, channel, thread_ts, no_persist_chunks)
             
             # Format and post response
             formatted_message = self.formatter.format_with_sources(response)
             self._update_message(channel, loading_ts, formatted_message, 
-                               user_id if ephemeral else None)
+                               user_id if no_persist_chunks else None)
             
             logger.info("Successfully handled Slack context question for user %s", user_id)
             
@@ -103,7 +103,7 @@ class SlackQuestionBot:
             logger.error("Error handling Slack context question: %s", error)
             error_message = self.error_handler.format_error_message(error)
             self._update_message_with_error(channel, loading_ts, error_message, 
-                                           user_id if ephemeral else None)
+                                           user_id if no_persist_chunks else None)
     
     def _extract_context(self, channel: str, thread_ts: str) -> list[str]:
         """Extract context from Slack channel or thread using room-specific context size."""
@@ -121,8 +121,16 @@ class SlackQuestionBot:
             return self.context_extractor.extract_channel_context(channel, limit=context_limit)
     
     def _get_chat_response(self, question: str, context_chunks: list[str], 
-                          channel: str, thread_ts: str):
-        """Get response from advanced chat API using context chunks."""
+                          channel: str, thread_ts: str, no_persist_chunks: bool = False):
+        """Get response from advanced chat API using context chunks.
+        
+        Args:
+            question: The user's question
+            context_chunks: List of context strings
+            channel: Slack channel ID
+            thread_ts: Thread timestamp (may be None)
+            no_persist_chunks: If True, sets no_persist_chunks for API call (slash commands)
+        """
         # Create deterministic session ID
         session_id = generate_session_id(channel, thread_ts or channel)
         
@@ -133,7 +141,8 @@ class SlackQuestionBot:
             client_name=self.bot_name,
             prompt=self.system_prompt,
             user_prompt=self.user_prompt,
-            model=self.advanced_chat_client.model_override
+            model=self.advanced_chat_client.model_override,
+            no_persist_chunks=no_persist_chunks
         )
         
         logger.debug("Requesting response from advanced chat API with %d chunks", 
