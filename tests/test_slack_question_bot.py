@@ -234,7 +234,7 @@ class TestSlackQuestionBot:
         assert call_args[0] == "C123456"
         assert call_args[1] == "loading_ts_123"
         assert "TestBot hit a snag" in call_args[2]  # Error message from ErrorHandler
-        assert call_args[3] is None  # user_id should be None for non-ephemeral
+        assert call_args[3] is None  # user_id should be None for non-slash-command
     
     def test_handle_question_with_block_kit_response(self, bot, mock_slack_client, mock_context_extractor, 
                                                     mock_advanced_chat_client, mock_formatter, mock_slack_web_client):
@@ -264,12 +264,12 @@ class TestSlackQuestionBot:
         # Should call update_message_with_blocks instead of update_message
         mock_slack_client.update_message_with_blocks.assert_called_once()
         call_args = mock_slack_client.update_message_with_blocks.call_args[0]
-        assert call_args[3] is None  # user_id should be None for non-ephemeral
+        assert call_args[3] is None  # user_id should be None for non-slash-command
         mock_slack_client.update_message.assert_not_called()
     
-    def test_handle_question_ephemeral_mode(self, bot, mock_slack_client, mock_context_extractor, 
+    def test_handle_question_no_persist_chunks_mode(self, bot, mock_slack_client, mock_context_extractor, 
                                            mock_advanced_chat_client, mock_formatter, mock_slack_web_client):
-        """Test ephemeral mode for slash commands."""
+        """Test no_persist_chunks mode for slash commands."""
         # Setup mocks
         mock_slack_client.post_loading_message.return_value = "loading_ts_123"
         mock_context_extractor.extract_thread_context.return_value = ["User A: Working on feature"]
@@ -282,14 +282,14 @@ class TestSlackQuestionBot:
         mock_advanced_chat_client.chat_with_chunks.return_value = mock_response
         mock_formatter.format_with_sources.return_value = "Formatted response"
         
-        # Execute with ephemeral=True
+        # Execute with no_persist_chunks=True
         bot.handle_question(
             question="What are they talking about?",
             channel="C123456",
             thread_ts="1234567890.123",
             user_id="U123456",
             slack_web_client=mock_slack_web_client,
-            ephemeral=True  # This should make responses private
+            no_persist_chunks=True  # This should make responses private and not persist chunks
         )
         
         # Verify that user_id is passed to make messages ephemeral
